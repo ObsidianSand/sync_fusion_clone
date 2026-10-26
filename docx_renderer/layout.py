@@ -1260,10 +1260,12 @@ class LayoutEngine:
                     grid_matrix[r_idx][c] = entry
                 g_col += span
 
-            # Base row height from non-vertically-merged cells
-            natural_h = max(
-                [14.0] + [e["req_height"] for e in cell_entries if e["cell"].v_merge is None]
-            )
+            # Base row height from non-vertically-merged cells. Word sizes a row to its tallest
+            # cell and imposes no minimum of its own -- `w:trHeight` below is the only floor. A
+            # fixed minimum here silently pads every row (a single line of 10pt Arial measures
+            # 11.5pt), which compounds down a long table into whole extra pages.
+            content_heights = [e["req_height"] for e in cell_entries if e["cell"].v_merge is None]
+            natural_h = max(content_heights) if content_heights else 0.0
             if row.height_rule == "exact" and row.height_pt > 0:
                 row_h = row.height_pt
             elif row.height_pt > 0:

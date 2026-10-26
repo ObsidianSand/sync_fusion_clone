@@ -104,3 +104,7 @@ The checks cover Word behaviors that are easy to regress:
   unshaded cell. `auto` defers the choice to the renderer and the two shading attributes resolve
   differently: automatic *text* (`w:color`) is black, an automatic *fill* (`w:fill`) is no fill
   at all.
+- **Table rows are not padded to a minimum.** Word sizes a row to its tallest cell, with
+  `w:trHeight` as the only floor. A fixed minimum silently pads every row -- a single line of 10pt
+  Arial measures 11.5pt -- and over a long table that compounds into whole extra pages, stranding
+  trailing paragraphs on a page of their own.

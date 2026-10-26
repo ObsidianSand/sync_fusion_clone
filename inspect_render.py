@@ -103,6 +103,18 @@ def check_table_shading(doc: ParsedDocument) -> bool:
     return not black
 
 
+def check_no_blank_pages(pages) -> bool:
+    """A page with nothing drawn on it means content was pushed off the page before it."""
+    blank = [pg.page_number for pg in pages if not (pg.texts or pg.images or pg.rects)]
+    print(f"  pages                : {len(pages)}")
+    if blank:
+        print(f"  FAIL - nothing drawn on page(s) {blank}")
+        print("         (an odd-page section break can produce one legitimately -- check the XML)")
+        return False
+    print("  PASS - every page has content")
+    return True
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--docx", type=Path, default=DEFAULT_DOCX, help="input .docx")
@@ -152,6 +164,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         ok &= check_toc_dot_leaders(parser, doc, pages)
         print("\nCheck 3 - table cells must not be filled black")
         ok &= check_table_shading(doc)
+        print("\nCheck 4 - no page may be blank")
+        ok &= check_no_blank_pages(pages)
 
     for n in args.open or []:
         target = args.output_dir / f"page_{n}.png"
