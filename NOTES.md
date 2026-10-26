@@ -89,6 +89,18 @@ of each column, and the engine fills them one at a time.
   pending from the previous section is consumed at the boundary so the columns align.
 * **Floating objects** positioned `relativeFrom="column"` now resolve against the column. That was
   indistinguishable from `margin` while everything was single-column.
+* **Balancing.** Word fills columns to the bottom margin except on the final page of a section that
+  is *followed* by a continuous break, where it evens them up — that trailing break is exactly what
+  the familiar "insert a continuous section break to balance columns" advice adds. The engine
+  checkpoints each block, and at the end of such a section rewinds the final column set and
+  re-flows it under a cap on how far down any column may run, binary-searching for the shortest cap
+  the content still fits under. `used / columns` is the ideal, but lines are indivisible, so the
+  search walks back up from there.
+* **Resuming after a column set.** Content following a column set starts below the *tallest*
+  column. The cursor sits at the bottom of whichever column was filled last — usually the shortest,
+  and after balancing reliably so — so resuming there ran the next section back up over the bottom
+  of the first column. The overlap was a couple of points and invisible in a baseline comparison;
+  it took comparing line boxes to see it.
 
 Covered by `tests/test_columns.py` (13 tests, which build their own fixtures — no sample in the repo
 has a multi-column section). Verified non-vacuous: forcing `column_bounds()` back to a single
@@ -96,9 +108,11 @@ full-width column fails every behavioral test and leaves only the single-column 
 
 ### Known limitations
 
-* **No column balancing.** Word evens out column heights on the last page of a section ended by a
-  continuous break; we fill each column to the bottom margin and leave the last one short. The
-  unbalanced result is correct for a section that ends at a page break or at the document end.
+* **Balancing is skipped when there is no rewind point.** Re-flowing needs a block to restart from:
+  one that opened the final column set, or the block that crossed onto its page. A section with
+  neither (its whole last set spilled in from the page before, with no block boundary on it) is
+  left filled rather than balanced. The cap search is also bounded at 12 iterations, so a result
+  can sit a line off the theoretical even split.
 * **Unequal columns, mid-paragraph.** A paragraph is broken into lines against the column it starts
   in. If it overflows into a column of a *different* width, the lines already broken keep the
   original measure. Equal-width columns — the default, and what `w:equalWidth` gives — are

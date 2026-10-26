@@ -269,6 +269,120 @@ def test_long_table_continues_into_the_next_column(tmp_path: Path) -> None:
     assert len(pages) == 1, "it should fill both columns of page 1 before paginating"
 
 
+def _build_balanced(path: Path, n_paras: int, trailing_section: bool) -> Path:
+    """A 2-column section, optionally followed by a continuous single-column one.
+
+    That trailing continuous break is what asks Word to balance the columns -- it is exactly what
+    the "insert a continuous section break to balance columns" advice adds.
+    """
+    doc = docx.Document()
+    doc.styles["Normal"].font.size = Pt(9)
+    s0 = doc.sections[0]
+    s0.top_margin = s0.bottom_margin = s0.left_margin = s0.right_margin = Inches(1.0)
+    _set_columns(s0, 1)
+    doc.add_paragraph("HEADING").paragraph_format.space_after = Pt(0)
+
+    s1 = doc.add_section(WD_SECTION.CONTINUOUS)
+    s1.top_margin = s1.bottom_margin = s1.left_margin = s1.right_margin = Inches(1.0)
+    _set_columns(s1, 2)
+    for i in range(1, n_paras + 1):
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = p.paragraph_format.space_after = Pt(0)
+        p.add_run(f"P{i:03d}")
+
+    if trailing_section:
+        s2 = doc.add_section(WD_SECTION.CONTINUOUS)
+        s2.top_margin = s2.bottom_margin = s2.left_margin = s2.right_margin = Inches(1.0)
+        _set_columns(s2, 1)
+        doc.add_paragraph("AFTER THE COLUMNS")
+    doc.save(str(path))
+    return path
+
+
+def test_short_section_is_not_balanced_without_a_trailing_continuous_break(tmp_path: Path) -> None:
+    """Word fills to the bottom margin unless a continuous break follows; so do we."""
+    pages = _layout(_build_balanced(tmp_path / "unbal.docx", 20, trailing_section=False))
+    xs = {x for _, x, _, _ in _labelled_texts(pages)}
+    assert xs == {MARGIN_L}, "without the trailing break all 20 fit in the first column"
+
+
+def test_trailing_continuous_break_balances_the_columns(tmp_path: Path) -> None:
+    pages = _layout(_build_balanced(tmp_path / "bal.docx", 20, trailing_section=True))
+    drawn = _labelled_texts(pages)
+    assert len(drawn) == 20
+
+    left = [d for d in drawn if d[1] == MARGIN_L]
+    right = [d for d in drawn if d[1] == 324.0]
+    assert right, "the right column must be used once the section is balanced"
+    # Even to within a line. The section's own break mark is an extra, invisible line in the
+    # right column, so the visible counts differ by one more than the balance does.
+    assert abs(len(left) - len(right)) <= 2, f"lopsided: {len(left)} vs {len(right)}"
+    # ...and the columns must end at about the same height.
+    assert max(d[2] for d in left) - max(d[2] for d in right) <= 2 * 12.5
+
+
+def test_balancing_shortens_the_block_against_the_unbalanced_layout(tmp_path: Path) -> None:
+    """The point of balancing: a short even block, not one column run to the bottom margin."""
+    unbalanced = _layout(_build_balanced(tmp_path / "u.docx", 40, trailing_section=False))
+    balanced = _layout(_build_balanced(tmp_path / "b.docx", 40, trailing_section=True))
+
+    u_bottom = max(d[2] for d in _labelled_texts(unbalanced))
+    b_bottom = max(d[2] for d in _labelled_texts(balanced))
+    assert b_bottom < u_bottom - 100.0, (
+        f"balanced content reaches y={b_bottom:.0f}, unbalanced y={u_bottom:.0f} -- "
+        "balancing should have roughly halved the height"
+    )
+
+
+def test_section_after_a_column_set_clears_the_tallest_column(tmp_path: Path) -> None:
+    """The cursor ends at the shortest column; resuming there would overlap the tallest one."""
+    for n in (3, 4, 5, 20, 21):
+        pages = _layout(_build_balanced(tmp_path / f"after{n}.docx", n, trailing_section=True))
+        boxes = [bb for bb in pages[0].bboxes if bb.kind == "paragraph"]
+        cols = [bb for bb in boxes if (bb.summary or "").startswith("P")]
+        after = [bb for bb in boxes if "AFTER" in (bb.summary or "")]
+        assert cols and after, f"n={n}: expected both the columns and the section after them"
+        assert min(bb.y0 for bb in after) >= max(bb.y1 for bb in cols) - 0.01, (
+            f"n={n}: the following section overlaps the bottom of the tallest column"
+        )
+
+
+def test_only_the_last_page_of_a_tall_section_is_balanced(tmp_path: Path) -> None:
+    """Earlier pages fill to the bottom; only the final column set is evened up."""
+    pages = _layout(_build_balanced(tmp_path / "tall.docx", 400, trailing_section=True))
+    drawn = _labelled_texts(pages)
+    assert len(drawn) == 400, "every paragraph placed exactly once"
+    assert len({t for _, _, _, t in drawn}) == 400, "no paragraph duplicated by the rewind"
+    assert len(pages) >= 3
+
+    last = max(p for p, _, _, _ in drawn)
+    on_last = [d for d in drawn if d[0] == last]
+    left = [d for d in on_last if d[1] == MARGIN_L]
+    right = [d for d in on_last if d[1] == 324.0]
+    assert left and right, "the final page should use both columns"
+    assert abs(len(left) - len(right)) <= 2, f"final page lopsided: {len(left)} vs {len(right)}"
+
+    # An earlier page is filled, not balanced: its columns run to the bottom margin.
+    earlier = [d for d in drawn if d[0] == last - 1]
+    assert max(d[2] for d in earlier) > 650.0, "pages before the last should fill to the margin"
+
+
+def test_balancing_works_when_the_final_set_began_mid_block(tmp_path: Path) -> None:
+    """The block that crosses onto the last page is checkpointed on the page before it.
+
+    Requiring a rewind point already sitting at the top of the final column set silently skipped
+    balancing for every section longer than one page.
+    """
+    pages = _layout(_build_balanced(tmp_path / "multi.docx", 160, trailing_section=True))
+    drawn = _labelled_texts(pages)
+    last = max(p for p, _, _, _ in drawn)
+    assert last > 1, "this fixture must span more than one page"
+    left = [d for d in drawn if d[0] == last and d[1] == MARGIN_L]
+    right = [d for d in drawn if d[0] == last and d[1] == 324.0]
+    assert right, "the last page's right column must be used"
+    assert abs(len(left) - len(right)) <= 2, f"not balanced: {len(left)} vs {len(right)}"
+
+
 def test_single_column_document_is_unchanged_by_column_support(tmp_path: Path) -> None:
     pages = _layout(_build(tmp_path / "one_col.docx", n_paras=20, cols=1))
     for _, x, _, _ in _labelled_texts(pages):

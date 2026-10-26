@@ -113,6 +113,11 @@ class LayoutEngine:
         #: continuous section break opens a column set part-way down, and every column of that set
         #: starts level with it rather than at the top of the page.
         self.col_top_y: float = self.curr_sect.margin_top_pt
+        #: How far down each column of the current set content reached, for balancing.
+        self.col_bottoms: List[float] = [self.curr_sect.margin_top_pt]
+        #: While balancing, the y no column on `_balance_page_idx` may run past.
+        self._balance_cap: Optional[float] = None
+        self._balance_page_idx: Optional[int] = None
 
     def layout_document(self) -> List[PageLayout]:
         """Run full pagination and layout pass over the document."""
@@ -137,17 +142,39 @@ class LayoutEngine:
                 # still pending from the previous section is consumed here, by the boundary, so
                 # that every column of the new set starts level; leaving it pending would indent
                 # only whichever column happened to be filled first.
-                self.col_bounds = sect_pr.column_bounds()
-                self.col_index = 0
+                #
+                # Resume below the *tallest* column of the set being closed. The cursor sits at the
+                # bottom of whichever column was filled last, which is usually the shortest -- and
+                # after balancing, reliably so -- and starting there would run the new section back
+                # up over the bottom of the first column.
+                self.cursor_y = max([self.cursor_y] + self.col_bottoms)
                 self.cursor_y += self.prev_space_after_pt
                 self.prev_space_after_pt = 0.0
+                self.col_bounds = sect_pr.column_bounds()
+                self.col_index = 0
                 self.col_top_y = self.cursor_y
+                self.col_bottoms = [self.cursor_y] * len(self.col_bounds)
+            # Word balances a multi-column section's last page when the section after it begins
+            # with a continuous break. Checkpoint each block so that set can be re-flowed.
+            next_sect = sections[s_idx + 1][0] if s_idx + 1 < len(sections) else None
+            balancing = (
+                sect_pr.cols_num > 1
+                and next_sect is not None
+                and next_sect.break_type == "continuous"
+            )
+            marks: List[Tuple[int, dict]] = []
+
             for b_idx, blk in enumerate(blocks):
+                if balancing:
+                    marks.append((b_idx, self._checkpoint()))
                 next_blk = blocks[b_idx + 1] if b_idx + 1 < len(blocks) else None
                 if isinstance(blk, ParagraphBlock):
                     self._layout_paragraph_on_page(blk, next_blk)
                 elif isinstance(blk, TableBlock):
                     self._layout_table_on_page(blk)
+
+            if balancing:
+                self._balance_final_column_set(blocks, marks)
 
         if not self.pages:
             self._new_page()
@@ -181,6 +208,7 @@ class LayoutEngine:
         self.col_bounds = sp.column_bounds()
         self.col_index = 0
         self.col_top_y = sp.margin_top_pt
+        self.col_bottoms = [sp.margin_top_pt] * len(self.col_bounds)
         self.cursor_y = sp.margin_top_pt
         self.prev_space_after_pt = 0.0
         self.prev_style_id = None
@@ -199,6 +227,7 @@ class LayoutEngine:
         if self.col_index + 1 >= len(self.col_bounds):
             self._new_page()
             return
+        self.col_bottoms[self.col_index] = max(self.col_bottoms[self.col_index], self.cursor_y)
         self.col_index += 1
         self.cursor_y = self.col_top_y
         self.prev_space_after_pt = 0.0
@@ -208,8 +237,151 @@ class LayoutEngine:
         # Floating objects are anchored to the page, not to a column, so their exclusion zones
         # still apply to the column we are moving into. Deliberately not cleared.
 
+    # -------------------------------------------------------------------------
+    # Column Balancing
+    # -------------------------------------------------------------------------
+    def _checkpoint(self) -> dict:
+        """Snapshot enough state to undo everything laid out from this point on.
+
+        Layout only ever appends to a page's primitive lists, so rewinding is truncation.
+        """
+        pg = self.curr_page
+        assert pg is not None
+        return {
+            "n_pages": len(self.pages),
+            "page": pg,
+            "lens": (len(pg.rects), len(pg.lines), len(pg.images), len(pg.texts), len(pg.bboxes)),
+            "cursor_y": self.cursor_y,
+            "col_index": self.col_index,
+            "col_top_y": self.col_top_y,
+            "col_bottoms": list(self.col_bottoms),
+            "col_bounds": list(self.col_bounds),
+            "prev_space_after_pt": self.prev_space_after_pt,
+            "prev_style_id": self.prev_style_id,
+            "prev_contextual_spacing": self.prev_contextual_spacing,
+            "is_top_of_page": self.is_top_of_page,
+            "exclusions": list(self.exclusions),
+            "sect_first_page": self.sect_first_page,
+        }
+
+    def _rewind_to(self, cp: dict) -> None:
+        """Undo layout back to a `_checkpoint()`."""
+        del self.pages[cp["n_pages"]:]
+        pg = cp["page"]
+        n_rects, n_lines, n_images, n_texts, n_bboxes = cp["lens"]
+        del pg.rects[n_rects:]
+        del pg.lines[n_lines:]
+        del pg.images[n_images:]
+        del pg.texts[n_texts:]
+        del pg.bboxes[n_bboxes:]
+        self.curr_page = pg
+        self.cursor_y = cp["cursor_y"]
+        self.col_index = cp["col_index"]
+        self.col_top_y = cp["col_top_y"]
+        self.col_bottoms = list(cp["col_bottoms"])
+        self.col_bounds = list(cp["col_bounds"])
+        self.prev_space_after_pt = cp["prev_space_after_pt"]
+        self.prev_style_id = cp["prev_style_id"]
+        self.prev_contextual_spacing = cp["prev_contextual_spacing"]
+        self.is_top_of_page = cp["is_top_of_page"]
+        self.exclusions = list(cp["exclusions"])
+        self.sect_first_page = cp["sect_first_page"]
+
+    def _lay_out_blocks(self, blocks: List[Union[ParagraphBlock, TableBlock]], start: int = 0) -> None:
+        for i in range(start, len(blocks)):
+            blk = blocks[i]
+            nxt = blocks[i + 1] if i + 1 < len(blocks) else None
+            if isinstance(blk, ParagraphBlock):
+                self._layout_paragraph_on_page(blk, nxt)
+            elif isinstance(blk, TableBlock):
+                self._layout_table_on_page(blk)
+
+    def _balance_final_column_set(
+        self,
+        blocks: List[Union[ParagraphBlock, TableBlock]],
+        marks: List[Tuple[int, dict]],
+    ) -> None:
+        """Even out the columns on the last page of a multi-column section.
+
+        Word fills columns to the bottom margin, except on the final page of a section that is
+        followed by a continuous break -- there it evens the columns up. That trailing continuous
+        break is exactly what the familiar "insert a continuous section break to balance columns"
+        advice adds to a document.
+
+        Balancing is done by re-flowing the content of that last column set under a cap on how far
+        down any column may run, then searching for the shortest cap the content still fits under.
+        A cap of exactly `used / columns` is the ideal, but lines are indivisible, so the search
+        walks back up from there until the content fits.
+        """
+        n_cols = len(self.col_bounds)
+        if n_cols < 2 or self.curr_page is None:
+            return
+
+        final_page_idx = len(self.pages) - 1
+        top = self.col_top_y
+        bottoms = list(self.col_bottoms)
+        bottoms[self.col_index] = max(bottoms[self.col_index], self.cursor_y)
+        used = sum(max(0.0, b - top) for b in bottoms)
+        if used <= 0.0:
+            return
+
+        # Pick the earliest block the final column set can be re-flowed from. Best case there is a
+        # block that began the set at the top of its first column. Otherwise fall back to the block
+        # that crossed onto this page: it is checkpointed on the page before, so re-laying it
+        # reproduces the break and only its remainder lands under the cap.
+        crossed = None
+        clean = None
+        for b_idx, cp in marks:
+            if cp["n_pages"] - 1 < final_page_idx:
+                crossed = (b_idx, cp)
+            elif clean is None and (
+                cp["col_index"] == 0
+                and abs(cp["cursor_y"] - top) < 0.01
+                and abs(cp["col_top_y"] - top) < 0.01
+            ):
+                clean = (b_idx, cp)
+        start = clean or crossed
+        if start is None:
+            return
+
+        b_idx, cp = start
+        full = self.page_bottom_raw - top
+        if full <= 0.0:
+            return
+
+        def fits(cap_height: float) -> bool:
+            self._rewind_to(cp)
+            self._balance_cap = top + cap_height
+            self._balance_page_idx = final_page_idx
+            try:
+                self._lay_out_blocks(blocks, b_idx)
+            finally:
+                self._balance_cap = None
+                self._balance_page_idx = None
+            return len(self.pages) - 1 == final_page_idx
+
+        lo, hi = used / n_cols, full
+        best = full                      # the unbalanced layout always fits, by construction
+        for _ in range(12):
+            if hi - lo < 0.5:
+                break
+            mid = (lo + hi) / 2.0
+            if fits(mid):
+                best, hi = mid, mid
+            else:
+                lo = mid
+        fits(best)
+
     @property
     def page_bottom_limit(self) -> float:
+        limit = self.page_bottom_raw
+        if self._balance_cap is not None and len(self.pages) - 1 == self._balance_page_idx:
+            return min(limit, self._balance_cap)
+        return limit
+
+    @property
+    def page_bottom_raw(self) -> float:
+        """The bottom margin, ignoring any balancing cap in force."""
         return self.curr_sect.page_height_pt - self.curr_sect.margin_bottom_pt
 
     @property
