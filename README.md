@@ -11,6 +11,9 @@ Built to give LLMs a high-fidelity visual feedback loop when editing raw OpenXML
 - **Full Style & Theme Cascade**: Resolves `docDefaults` $\rightarrow$ `basedOn` style chains $\rightarrow$ conditional table styles (`<w:tblStylePr>`) $\rightarrow$ list levels $\rightarrow$ direct `pPr`/`rPr` formatting, including HSL `themeTint`/`themeShade` modifiers.
 - **Exact Word Box & Flow Layout (Twips & EMUs $\rightarrow$ Points)**:
   - Page sizes, margins, section breaks, and dynamic `PAGE` / `NUMPAGES` header/footer fields.
+  - Multi-column sections (`<w:cols>`): equal or explicitly-sized columns, content flowing one
+    column at a time, `<w:br w:type="column"/>`, and column sets opened mid-page by a continuous
+    section break. Column *balancing* is not implemented — see `NOTES.md`.
   - Paragraph indentations (`left`, `right`, `firstLine`, `hanging`) and ECMA-376 spec spacing rules.
   - Custom `<w:tabs>` (`left`, `center`, `right`, `decimal`) and default `0.5"` (`36 pt`) tab stops.
   - Contiguous dot, hyphen, and underscore tab leaders (`leader="dot"`) for Tables of Contents.

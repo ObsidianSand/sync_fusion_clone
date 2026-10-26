@@ -881,6 +881,16 @@ class DocxParser:
             space = cols.get(qn("w:space"))
             if space is not None:
                 sp.cols_space_pt = twips_to_pt(space)
+            sp.cols_equal_width = parse_bool_attr(cols, "w:equalWidth")
+            # Word writes a <w:col> per column when their widths differ. It omits w:num in that
+            # case, so the children are also the authority on how many columns there are.
+            col_els = cols.findall("w:col", NS)
+            if col_els and all(c.get(qn("w:w")) for c in col_els):
+                sp.cols_num = max(1, len(col_els))
+                sp.cols_explicit = [
+                    (twips_to_pt(c.get(qn("w:w"))), twips_to_pt(c.get(qn("w:space")) or 0))
+                    for c in col_els
+                ]
 
         tpg = sect_el.find("w:titlePg", NS)
         if tpg is not None:

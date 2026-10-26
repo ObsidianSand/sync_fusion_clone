@@ -268,6 +268,10 @@ class SectionProps:
     footer_dist_pt: float = 36.0            # 0.5 in
     cols_num: int = 1
     cols_space_pt: float = 36.0
+    cols_equal_width: bool = True
+    #: Per-column (width_pt, space_after_pt) from explicit <w:col> children, used when the section
+    #: declares unequal columns. Empty for the usual equal-width case.
+    cols_explicit: List[Tuple[float, float]] = field(default_factory=list)
     title_pg: bool = False                  # Different first page header/footer
     break_type: str = "nextPage"            # 'nextPage', 'continuous', 'evenPage', 'oddPage'
     header_default: Optional[HeaderFooterContent] = None
@@ -280,6 +284,32 @@ class SectionProps:
     @property
     def content_width_pt(self) -> float:
         return max(36.0, self.page_width_pt - self.margin_left_pt - self.margin_right_pt)
+
+    def column_bounds(self) -> List[Tuple[float, float]]:
+        """``(x0, width)`` of each text column of this section, left to right, in points.
+
+        Word divides the text area into `w:num` columns separated by `w:space`, so an equal-width
+        column measures ``(content_width - (num - 1) * space) / num``. A section declaring unequal
+        columns carries an explicit ``<w:col w:w=".." w:space=".."/>`` per column instead, and the
+        last one's space is unused.
+        """
+        n = max(1, self.cols_num)
+        if n == 1:
+            return [(self.margin_left_pt, self.content_width_pt)]
+
+        if self.cols_explicit and len(self.cols_explicit) >= n:
+            bounds: List[Tuple[float, float]] = []
+            x = self.margin_left_pt
+            for width, space in self.cols_explicit[:n]:
+                bounds.append((x, max(1.0, width)))
+                x += width + space
+            return bounds
+
+        width = max(1.0, (self.content_width_pt - self.cols_space_pt * (n - 1)) / n)
+        return [
+            (self.margin_left_pt + i * (width + self.cols_space_pt), width)
+            for i in range(n)
+        ]
 
 
 @dataclass

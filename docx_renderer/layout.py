@@ -33,7 +33,7 @@ from .model import (
 @dataclass
 class _InlineAtom:
     """Smallest indivisible inline layout unit (word, whitespace, tab, inline drawing, break)."""
-    kind: str                       # 'word', 'space', 'tab', 'drawing', 'line_break', 'page_break'
+    kind: str                       # 'word', 'space', 'tab', 'drawing', 'line_break', 'page_break', 'column_break'
     text: str = ""
     width_pt: float = 0.0
     ascender_pt: float = 0.0
@@ -102,9 +102,17 @@ class LayoutEngine:
         self.prev_space_after_pt: float = 0.0
         self.prev_style_id: Optional[str] = None
         self.prev_contextual_spacing: bool = False
+        #: True at the top of the current *flow area* -- a new page, or a new column on it.
         self.is_top_of_page: bool = True
         self.exclusions: List[_ExclusionZone] = []
         self.sect_first_page: bool = True
+        #: (x0, width) per text column of the current section, and which one we are filling.
+        self.col_bounds: List[Tuple[float, float]] = self.curr_sect.column_bounds()
+        self.col_index: int = 0
+        #: y at which the current column set starts on this page. Usually the top margin, but a
+        #: continuous section break opens a column set part-way down, and every column of that set
+        #: starts level with it rather than at the top of the page.
+        self.col_top_y: float = self.curr_sect.margin_top_pt
 
     def layout_document(self) -> List[PageLayout]:
         """Run full pagination and layout pass over the document."""
@@ -123,6 +131,17 @@ class LayoutEngine:
             self.sect_first_page = True
             if s_idx == 0 or sect_pr.break_type != "continuous":
                 self._new_page()
+            else:
+                # A continuous break keeps the page but starts a fresh column set on it, which is
+                # how a document switches between one and two columns mid-page. The space-after
+                # still pending from the previous section is consumed here, by the boundary, so
+                # that every column of the new set starts level; leaving it pending would indent
+                # only whichever column happened to be filled first.
+                self.col_bounds = sect_pr.column_bounds()
+                self.col_index = 0
+                self.cursor_y += self.prev_space_after_pt
+                self.prev_space_after_pt = 0.0
+                self.col_top_y = self.cursor_y
             for b_idx, blk in enumerate(blocks):
                 next_blk = blocks[b_idx + 1] if b_idx + 1 < len(blocks) else None
                 if isinstance(blk, ParagraphBlock):
@@ -159,6 +178,9 @@ class LayoutEngine:
         self.sect_first_page = False
         self.pages.append(pg)
         self.curr_page = pg
+        self.col_bounds = sp.column_bounds()
+        self.col_index = 0
+        self.col_top_y = sp.margin_top_pt
         self.cursor_y = sp.margin_top_pt
         self.prev_space_after_pt = 0.0
         self.prev_style_id = None
@@ -167,9 +189,38 @@ class LayoutEngine:
         self.exclusions = []
         return pg
 
+    def _advance_flow(self) -> None:
+        """Out of vertical room: start the next column, or a new page after the last one.
+
+        This is the "ran out of space" move, as distinct from `_new_page()`, which is the explicit
+        one (a manual page break, `w:pageBreakBefore`, a section start). In a single-column section
+        the two are the same thing.
+        """
+        if self.col_index + 1 >= len(self.col_bounds):
+            self._new_page()
+            return
+        self.col_index += 1
+        self.cursor_y = self.col_top_y
+        self.prev_space_after_pt = 0.0
+        self.prev_style_id = None
+        self.prev_contextual_spacing = False
+        self.is_top_of_page = True
+        # Floating objects are anchored to the page, not to a column, so their exclusion zones
+        # still apply to the column we are moving into. Deliberately not cleared.
+
     @property
     def page_bottom_limit(self) -> float:
         return self.curr_sect.page_height_pt - self.curr_sect.margin_bottom_pt
+
+    @property
+    def col_x(self) -> float:
+        """Left edge of the column currently being filled."""
+        return self.col_bounds[self.col_index][0]
+
+    @property
+    def col_w(self) -> float:
+        """Width of the column currently being filled."""
+        return self.col_bounds[self.col_index][1]
 
     def _avail_line_bounds(self, y_top: float, y_bottom: float, base_x0: float, base_x1: float) -> Tuple[float, float, Optional[ float]]:
         """
@@ -226,8 +277,8 @@ class LayoutEngine:
         else:
             gap_above = self.prev_space_after_pt + space_before
 
-        col_x = self.curr_sect.margin_left_pt
-        col_w = self.curr_sect.content_width_pt
+        col_x = self.col_x
+        col_w = self.col_w
 
         # Build lines for this paragraph
         lines_data = self._break_paragraph_into_lines(
@@ -252,8 +303,9 @@ class LayoutEngine:
                             next_min_h = max(next_min_h, nr.drawing.height_pt + 12.0)
                 need_h += next_min_h
             if (ps.keep_lines or ps.keep_next) and (self.cursor_y + need_h > self.page_bottom_limit):
-                self._new_page()
+                self._advance_flow()
                 gap_above = 0.0
+                col_x, col_w = self.col_x, self.col_w
                 lines_data = self._break_paragraph_into_lines(
                     p,
                     col_x=col_x,
@@ -269,16 +321,24 @@ class LayoutEngine:
         p_start_page = self.curr_page
 
         for l_idx, ld in enumerate(lines_data):
+            if ld.get("explicit_column_break_before"):
+                self._advance_flow()
+                p_start_y = self.cursor_y
+                p_start_page = self.curr_page
+                col_x, col_w = self.col_x, self.col_w
+
             if ld.get("explicit_page_break_before"):
                 self._new_page()
                 p_start_y = self.cursor_y
                 p_start_page = self.curr_page
+                col_x, col_w = self.col_x, self.col_w
 
             lh = ld["line_height"]
             if not self.is_top_of_page and (self.cursor_y + lh > self.page_bottom_limit):
-                self._new_page()
+                self._advance_flow()
                 p_start_y = self.cursor_y
                 p_start_page = self.curr_page
+                col_x, col_w = self.col_x, self.col_w
 
             y_top = self.cursor_y
             # If floating exclusion pushed this line down, sync cursor_y
@@ -303,6 +363,13 @@ class LayoutEngine:
                 self._new_page()
                 p_start_y = self.cursor_y
                 p_start_page = self.curr_page
+                col_x, col_w = self.col_x, self.col_w
+
+            if ld.get("explicit_column_break_after"):
+                self._advance_flow()
+                p_start_y = self.cursor_y
+                p_start_page = self.curr_page
+                col_x, col_w = self.col_x, self.col_w
 
         # Record bounding box for the paragraph on its current page
         assert self.curr_page is not None
@@ -481,7 +548,12 @@ class LayoutEngine:
                     )
                 )
             elif r.kind == "break":
-                bkind = "page_break" if r.break_type == "page" else "line_break"
+                if r.break_type == "page":
+                    bkind = "page_break"
+                elif r.break_type == "column":
+                    bkind = "column_break"
+                else:
+                    bkind = "line_break"
                 atoms.append(
                     _InlineAtom(
                         kind=bkind,
@@ -655,6 +727,8 @@ class LayoutEngine:
             max_lh1 = lh1_def
             explicit_pb_before = False
             explicit_pb_after = False
+            explicit_cb_before = False
+            explicit_cb_after = False
 
             def flush_segment() -> float:
                 """Finalize current segment's horizontal start_x and return its right edge."""
@@ -704,6 +778,15 @@ class LayoutEngine:
                         explicit_pb_before = True
                     else:
                         explicit_pb_after = True
+                        break
+                    continue
+
+                if atom.kind == "column_break":
+                    idx += 1
+                    if not curr_seg_atoms and not segments:
+                        explicit_cb_before = True
+                    else:
+                        explicit_cb_after = True
                         break
                     continue
 
@@ -770,6 +853,8 @@ class LayoutEngine:
                     "list_marker_info": marker_info if is_first else None,
                     "explicit_page_break_before": explicit_pb_before,
                     "explicit_page_break_after": explicit_pb_after,
+                    "explicit_column_break_before": explicit_cb_before,
+                    "explicit_column_break_after": explicit_cb_after,
                     "y_override": y_override,
                 }
             )
@@ -1107,6 +1192,9 @@ class LayoutEngine:
         # Resolve Horizontal X
         if drw.pos_h_relative_from == "page":
             ref_x0, ref_w = 0.0, sp.page_width_pt
+        elif drw.pos_h_relative_from == "column":
+            # "column" means the text column, which is the whole text area only when there is one.
+            ref_x0, ref_w = self.col_x, self.col_w
         else:
             ref_x0, ref_w = sp.margin_left_pt, sp.content_width_pt
 
@@ -1403,19 +1491,20 @@ class LayoutEngine:
 
     def _layout_table_on_page(self, tb: TableBlock) -> None:
         assert self.curr_page is not None
-        sp = self.curr_sect
-        avail_w = sp.content_width_pt
+        # A table in a multi-column section is laid out inside its column, not across the page.
+        avail_w = self.col_w
+        flow_x = self.col_x
         col_widths = self._resolve_table_column_widths(tb, avail_w)
         if not col_widths:
             return
 
         total_tbl_w = sum(col_widths)
         if tb.alignment == "center":
-            table_x = sp.margin_left_pt + (avail_w - total_tbl_w) / 2.0
+            table_x = flow_x + (avail_w - total_tbl_w) / 2.0
         elif tb.alignment == "right":
-            table_x = sp.margin_left_pt + avail_w - total_tbl_w
+            table_x = flow_x + avail_w - total_tbl_w
         else:
-            table_x = sp.margin_left_pt + tb.indent_left_pt
+            table_x = flow_x + tb.indent_left_pt
 
         row_recs = self._prepare_laid_out_rows(
             tb, col_widths, page_num=self.curr_page.page_number, total_pages=max(1, len(self.pages))
@@ -1452,8 +1541,12 @@ class LayoutEngine:
                             style_id=tb.style_id,
                         )
                     )
-                self._new_page()
+                self._advance_flow()
                 tbl_start_y = self.cursor_y
+                # Follow the flow into the next column: the rows already measured keep their
+                # widths, so the table only shifts sideways by the column delta.
+                table_x += self.col_x - flow_x
+                flow_x = self.col_x
                 # Repeat header rows on new page if we are past the header rows
                 if r_idx >= len(header_recs):
                     for h_rr in header_recs:

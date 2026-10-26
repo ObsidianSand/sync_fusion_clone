@@ -69,12 +69,44 @@ bump still gives 88 pages and 118/118: most pages in this document end on a manu
 
 ---
 
-## Open — multi-column sections are parsed but not laid out
+## Done — multi-column sections
 
-`SectionProps.cols_num` and `cols_space_pt` are parsed in `parser.py:876` and never read by
-`layout.py`. A document with a genuine `<w:cols w:num="2"/>` section would silently lay out
-single-column, at the wrong measure and the wrong page count. The sample document does not exercise
-this, so it is latent, not a live bug — and nothing in the checks would catch it today.
+`<w:cols>` is now laid out, not just parsed. `SectionProps.column_bounds()` returns the `(x0, width)`
+of each column, and the engine fills them one at a time.
+
+* **Geometry.** Equal columns measure `(content_width - (num - 1) * space) / num`; a section with
+  explicit `<w:col w:w=".." w:space=".."/>` children uses those widths instead. The parser reads
+  `w:equalWidth` and the `<w:col>` children, which are also the authority on the column count —
+  Word omits `w:num` when it writes them.
+* **Flow.** `_advance_flow()` replaces `_new_page()` everywhere the engine means "ran out of room":
+  it moves to the next column and only starts a page after the last one. `_new_page()` still handles
+  the explicit breaks (manual page break, `w:pageBreakBefore`, section start). Paragraphs and tables
+  both flow; a table taller than a column continues in the next one.
+* **`<w:br w:type="column"/>`** was being treated as a line break. It now advances the flow.
+* **Column set top.** A continuous section break opens a column set part-way down a page, and every
+  column of that set starts level with it rather than at the top margin — otherwise the right column
+  floats up above the single-column heading that preceded it on the same page. The space-after still
+  pending from the previous section is consumed at the boundary so the columns align.
+* **Floating objects** positioned `relativeFrom="column"` now resolve against the column. That was
+  indistinguishable from `margin` while everything was single-column.
+
+Covered by `tests/test_columns.py` (13 tests, which build their own fixtures — no sample in the repo
+has a multi-column section). Verified non-vacuous: forcing `column_bounds()` back to a single
+full-width column fails every behavioral test and leaves only the single-column baselines passing.
+
+### Known limitations
+
+* **No column balancing.** Word evens out column heights on the last page of a section ended by a
+  continuous break; we fill each column to the bottom margin and leave the last one short. The
+  unbalanced result is correct for a section that ends at a page break or at the document end.
+* **Unequal columns, mid-paragraph.** A paragraph is broken into lines against the column it starts
+  in. If it overflows into a column of a *different* width, the lines already broken keep the
+  original measure. Equal-width columns — the default, and what `w:equalWidth` gives — are
+  unaffected, and the re-break on the `keep_lines` / `keep_next` path is correct either way.
+* **No Word-recorded ground truth.** Unlike pagination, these tests assert spec arithmetic and
+  reading order, because a python-docx fixture carries no `<Pages>` and no `PAGEREF` results. To get
+  real ground truth, open `tests`' generated fixture in Word, save it, and the records described
+  above become available.
 
 ## Related
 
