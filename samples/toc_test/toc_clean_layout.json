@@ -1,0 +1,603 @@
+[
+  {
+    "page_number": 1,
+    "width_pt": 612.0,
+    "height_pt": 792.0,
+    "margins_pt": {
+      "top": 72.0,
+      "bottom": 72.0,
+      "left": 72.0,
+      "right": 72.0
+    },
+    "elements": [
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[1]",
+        "style_id": "plainleft",
+        "bbox_pt": [
+          72.0,
+          72.0,
+          540.0,
+          85.41
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "(Please replace the highlighted information with your information and delete all"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[2]",
+        "style_id": "Centered",
+        "bbox_pt": [
+          72.0,
+          85.41,
+          540.0,
+          98.81
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "TABLE OF CONTENTS"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[3]",
+        "style_id": "Centered",
+        "bbox_pt": [
+          72.0,
+          98.81,
+          540.0,
+          112.22
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": ""
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[4]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          112.22,
+          540.0,
+          139.82
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "CHAPTERPAGE"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[5]",
+        "style_id": null,
+        "bbox_pt": [
+          206.03,
+          145.25,
+          535.33,
+          150.68
+        ],
+        "indent_from_left_margin_pt": 134.03,
+        "indent_in_tabs_0_5in": 3.72,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[5]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          139.82,
+          540.0,
+          167.42
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "ABSTRACT (Mandatory)i"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[6]",
+        "style_id": null,
+        "bbox_pt": [
+          204.03,
+          172.85,
+          532.67,
+          178.28
+        ],
+        "indent_from_left_margin_pt": 132.03,
+        "indent_in_tabs_0_5in": 3.67,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[6]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          167.42,
+          540.0,
+          195.02
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "DEDICATION (Optional)ii"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[7]",
+        "style_id": null,
+        "bbox_pt": [
+          258.7,
+          200.45,
+          530.0,
+          205.88
+        ],
+        "indent_from_left_margin_pt": 186.7,
+        "indent_in_tabs_0_5in": 5.19,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[7]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          195.02,
+          540.0,
+          222.62
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "ACKNOWLEDGMENTS (Optional)iii"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[8]",
+        "style_id": null,
+        "bbox_pt": [
+          186.7,
+          228.05,
+          529.33,
+          233.48
+        ],
+        "indent_from_left_margin_pt": 114.7,
+        "indent_in_tabs_0_5in": 3.19,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[8]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          222.62,
+          540.0,
+          250.22
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "PREFACE (Optional)iv"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[9]",
+        "style_id": null,
+        "bbox_pt": [
+          168.69,
+          255.65,
+          532.0,
+          261.08
+        ],
+        "indent_from_left_margin_pt": 96.69,
+        "indent_in_tabs_0_5in": 2.69,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[9]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          250.22,
+          540.0,
+          277.82
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "LIST OF TABLESv"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[10]",
+        "style_id": null,
+        "bbox_pt": [
+          176.01,
+          283.25,
+          529.33,
+          288.68
+        ],
+        "indent_from_left_margin_pt": 104.01,
+        "indent_in_tabs_0_5in": 2.89,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[10]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          277.82,
+          540.0,
+          305.42
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "LIST OF FIGURESvi"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[11]",
+        "style_id": null,
+        "bbox_pt": [
+          182.02,
+          310.85,
+          526.67,
+          316.28
+        ],
+        "indent_from_left_margin_pt": 110.02,
+        "indent_in_tabs_0_5in": 3.06,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[11]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          305.42,
+          540.0,
+          333.02
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "LIST OF SCHEMESvii"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[12]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          333.02,
+          540.0,
+          360.62
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "CHAPTERS"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[13]",
+        "style_id": null,
+        "bbox_pt": [
+          253.4,
+          366.05,
+          531.33,
+          371.48
+        ],
+        "indent_from_left_margin_pt": 181.4,
+        "indent_in_tabs_0_5in": 5.04,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[13]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          360.62,
+          540.0,
+          388.22
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "CHAPTER 1 \u2013 Introduction1"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[14]",
+        "style_id": null,
+        "bbox_pt": [
+          230.71,
+          393.65,
+          531.33,
+          399.08
+        ],
+        "indent_from_left_margin_pt": 158.71,
+        "indent_in_tabs_0_5in": 4.41,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[14]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          388.22,
+          540.0,
+          415.82
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "CHAPTER 2 \u2013 Method4"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[15]",
+        "style_id": null,
+        "bbox_pt": [
+          230.7,
+          421.25,
+          524.65,
+          426.68
+        ],
+        "indent_from_left_margin_pt": 158.7,
+        "indent_in_tabs_0_5in": 4.41,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[15]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          415.82,
+          540.0,
+          443.42
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "CHAPTER 3 \u2013 Results18"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[16]",
+        "style_id": null,
+        "bbox_pt": [
+          248.71,
+          448.85,
+          521.32,
+          454.28
+        ],
+        "indent_from_left_margin_pt": 176.71,
+        "indent_in_tabs_0_5in": 4.91,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[16]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          443.42,
+          540.0,
+          471.02
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "CHAPTER 4 \u2013 Discussion38 "
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[17]",
+        "style_id": null,
+        "bbox_pt": [
+          408.78,
+          476.45,
+          521.32,
+          481.88
+        ],
+        "indent_from_left_margin_pt": 336.78,
+        "indent_in_tabs_0_5in": 9.36,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[17]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          471.02,
+          540.0,
+          498.62
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "CHAPTER 5 \u2013 Summary, Conclusion, Recommendation53 "
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[18]",
+        "style_id": null,
+        "bbox_pt": [
+          262.71,
+          504.05,
+          524.65,
+          509.48
+        ],
+        "indent_from_left_margin_pt": 190.71,
+        "indent_in_tabs_0_5in": 5.3,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[18]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          498.62,
+          540.0,
+          526.22
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "REFERENCES or BIBLIOGRAPHY57"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[19]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          526.22,
+          540.0,
+          553.82
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "APPENDICES (Optional)"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[20]",
+        "style_id": null,
+        "bbox_pt": [
+          273.44,
+          559.25,
+          524.65,
+          564.68
+        ],
+        "indent_from_left_margin_pt": 201.44,
+        "indent_in_tabs_0_5in": 5.6,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[20]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          553.82,
+          540.0,
+          581.42
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "Appendix A \u2013 Correspondence75"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[21]",
+        "style_id": null,
+        "bbox_pt": [
+          174.71,
+          586.85,
+          524.65,
+          592.28
+        ],
+        "indent_from_left_margin_pt": 102.71,
+        "indent_in_tabs_0_5in": 2.85,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[21]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          581.42,
+          540.0,
+          609.02
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "Appendix B 80"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[22]",
+        "style_id": null,
+        "bbox_pt": [
+          175.37,
+          614.45,
+          524.65,
+          619.88
+        ],
+        "indent_from_left_margin_pt": 103.37,
+        "indent_in_tabs_0_5in": 2.87,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[22]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          609.02,
+          540.0,
+          636.62
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "Appendix C 81"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[23]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          636.62,
+          540.0,
+          664.22
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": ""
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:p[24]",
+        "style_id": null,
+        "bbox_pt": [
+          110.0,
+          669.65,
+          524.65,
+          675.08
+        ],
+        "indent_from_left_margin_pt": 38.0,
+        "indent_in_tabs_0_5in": 1.06,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[24]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          664.22,
+          540.0,
+          691.82
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "VITA82"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[25]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          691.82,
+          540.0,
+          719.42
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "(NOTE:  Page numbers must be right-aligned.)"
+      }
+    ]
+  }
+]

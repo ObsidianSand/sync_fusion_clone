@@ -1,0 +1,953 @@
+[
+  {
+    "page_number": 1,
+    "width_pt": 612.0,
+    "height_pt": 792.0,
+    "margins_pt": {
+      "top": 54.0,
+      "bottom": 54.0,
+      "left": 72.0,
+      "right": 72.0
+    },
+    "elements": [
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[1]",
+        "style_id": "Title",
+        "bbox_pt": [
+          72.0,
+          54.0,
+          540.0,
+          83.9
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "Technical Specification: OpenXML Visual Feedback Pipeline"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[2]",
+        "style_id": "Heading1",
+        "bbox_pt": [
+          72.0,
+          91.9,
+          540.0,
+          110.42
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "Table of Contents"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:sdt/w:sdtContent/w:p[1]",
+        "style_id": "TOC1",
+        "bbox_pt": [
+          321.39,
+          119.64,
+          530.91,
+          124.87
+        ],
+        "indent_from_left_margin_pt": 249.39,
+        "indent_in_tabs_0_5in": 6.93,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:sdt/w:sdtContent/w:p[1]",
+        "style_id": "TOC1",
+        "bbox_pt": [
+          72.0,
+          114.42,
+          540.0,
+          129.25
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "1. Executive Summary & Indentation Verification1"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:sdt/w:sdtContent/w:p[2]",
+        "style_id": "TOC2",
+        "bbox_pt": [
+          287.59,
+          137.47,
+          530.91,
+          142.7
+        ],
+        "indent_from_left_margin_pt": 215.59,
+        "indent_in_tabs_0_5in": 5.99,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:sdt/w:sdtContent/w:p[2]",
+        "style_id": "TOC2",
+        "bbox_pt": [
+          90.0,
+          132.25,
+          540.0,
+          147.08
+        ],
+        "indent_from_left_margin_pt": 18.0,
+        "indent_in_tabs_0_5in": 0.5,
+        "summary": "1.1 Tab Stop & Hanging Indent Alignment1"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:sdt/w:sdtContent/w:p[3]",
+        "style_id": "TOC2",
+        "bbox_pt": [
+          257.09,
+          155.3,
+          530.91,
+          160.53
+        ],
+        "indent_from_left_margin_pt": 185.09,
+        "indent_in_tabs_0_5in": 5.14,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:sdt/w:sdtContent/w:p[3]",
+        "style_id": "TOC2",
+        "bbox_pt": [
+          90.0,
+          150.08,
+          540.0,
+          164.91
+        ],
+        "indent_from_left_margin_pt": 18.0,
+        "indent_in_tabs_0_5in": 0.5,
+        "summary": "1.2 Multi-Level Lists & Sub-Clauses1"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:sdt/w:sdtContent/w:p[4]",
+        "style_id": "TOC1",
+        "bbox_pt": [
+          283.35,
+          175.13,
+          530.91,
+          180.36
+        ],
+        "indent_from_left_margin_pt": 211.35,
+        "indent_in_tabs_0_5in": 5.87,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:sdt/w:sdtContent/w:p[4]",
+        "style_id": "TOC1",
+        "bbox_pt": [
+          72.0,
+          169.91,
+          540.0,
+          184.74
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "2. Performance & Financial Metrics Table1"
+      },
+      {
+        "kind": "tab_leader",
+        "xml_path": "word/document.xml:/w:body/w:sdt/w:sdtContent/w:p[5]",
+        "style_id": "TOC1",
+        "bbox_pt": [
+          224.18,
+          194.96,
+          530.91,
+          200.19
+        ],
+        "indent_from_left_margin_pt": 152.18,
+        "indent_in_tabs_0_5in": 4.23,
+        "summary": "dot"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:sdt/w:sdtContent/w:p[5]",
+        "style_id": "TOC1",
+        "bbox_pt": [
+          72.0,
+          189.74,
+          540.0,
+          204.57
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "3. System Architecture Figure1"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[3]",
+        "style_id": "Heading1",
+        "bbox_pt": [
+          72.0,
+          215.57,
+          540.0,
+          234.08
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "1. Executive Summary & Indentation Verification"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[4]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          236.08,
+          540.0,
+          262.53
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "This document tests exact spatial positioning in Twips and EMUs. When an LLM edi"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[5]",
+        "style_id": "Heading2",
+        "bbox_pt": [
+          72.0,
+          272.53,
+          540.0,
+          289.72
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "1.1 Tab Stop & Hanging Indent Alignment"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[6]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          291.72,
+          540.0,
+          304.95
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "Clause 1.0 (0.0\" margin): Properly aligned at the primary left margin."
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[7]",
+        "style_id": null,
+        "bbox_pt": [
+          108.0,
+          306.95,
+          540.0,
+          320.17
+        ],
+        "indent_from_left_margin_pt": 36.0,
+        "indent_in_tabs_0_5in": 1.0,
+        "summary": "Clause 1.1 (0.5\" / 1 Tab): Indented exactly one standard tab stop over."
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[8]",
+        "style_id": null,
+        "bbox_pt": [
+          144.0,
+          322.17,
+          540.0,
+          335.4
+        ],
+        "indent_from_left_margin_pt": 72.0,
+        "indent_in_tabs_0_5in": 2.0,
+        "summary": "Clause 1.1.1 (1.0\" / 2 Tabs): Indented two tab stops for nested sub-items."
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[9]",
+        "style_id": null,
+        "bbox_pt": [
+          180.0,
+          337.4,
+          540.0,
+          363.85
+        ],
+        "indent_from_left_margin_pt": 108.0,
+        "indent_in_tabs_0_5in": 3.0,
+        "summary": "Clause 1.1.2 (1.5\" / 3 Tabs \u2014 MISMATCH DEMO): Intentionally indented one extra t"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[10]",
+        "style_id": null,
+        "bbox_pt": [
+          144.0,
+          365.85,
+          540.0,
+          379.07
+        ],
+        "indent_from_left_margin_pt": 72.0,
+        "indent_in_tabs_0_5in": 2.0,
+        "summary": "Clause 1.1.3 (1.0\" / 2 Tabs): Returned to the expected two-tab sibling alignment"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[11]",
+        "style_id": "Heading2",
+        "bbox_pt": [
+          72.0,
+          387.07,
+          540.0,
+          404.27
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "1.2 Multi-Level Lists & Sub-Clauses"
+      },
+      {
+        "kind": "list_marker",
+        "xml_path": "word/document.xml:/w:body/w:p[12]",
+        "style_id": "ListBullet",
+        "bbox_pt": [
+          72.0,
+          406.27,
+          76.98,
+          416.27
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "\u2022"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[12]",
+        "style_id": "ListBullet",
+        "bbox_pt": [
+          72.0,
+          406.27,
+          540.0,
+          419.49
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "Primary bullet item rendered via numbering.xml with hanging indent."
+      },
+      {
+        "kind": "list_marker",
+        "xml_path": "word/document.xml:/w:body/w:p[13]",
+        "style_id": "ListBullet",
+        "bbox_pt": [
+          72.0,
+          419.49,
+          76.98,
+          429.49
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "\u2022"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[13]",
+        "style_id": "ListBullet",
+        "bbox_pt": [
+          72.0,
+          419.49,
+          540.0,
+          432.72
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "Secondary bullet item verifying consistent horizontal alignment after bullet mar"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[14]",
+        "style_id": "Heading1",
+        "bbox_pt": [
+          72.0,
+          442.72,
+          540.0,
+          461.23
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "2. Performance & Financial Metrics Table"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[1]/w:tc[1]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          77.4,
+          464.23,
+          178.85,
+          475.73
+        ],
+        "indent_from_left_margin_pt": 5.4,
+        "indent_in_tabs_0_5in": 0.15,
+        "summary": "Component"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[1]/w:tc[1]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          464.23,
+          184.25,
+          478.23
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "r1c1"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[1]/w:tc[2]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          189.65,
+          464.23,
+          310.1,
+          475.73
+        ],
+        "indent_from_left_margin_pt": 117.65,
+        "indent_in_tabs_0_5in": 3.27,
+        "summary": "Subsystem / Metric"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[1]/w:tc[2]",
+        "style_id": null,
+        "bbox_pt": [
+          184.25,
+          464.23,
+          315.5,
+          478.23
+        ],
+        "indent_from_left_margin_pt": 112.25,
+        "indent_in_tabs_0_5in": 3.12,
+        "summary": "r1c2"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[1]/w:tc[3]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          320.9,
+          464.23,
+          422.35,
+          475.73
+        ],
+        "indent_from_left_margin_pt": 248.9,
+        "indent_in_tabs_0_5in": 6.91,
+        "summary": "Target SLA"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[1]/w:tc[3]",
+        "style_id": null,
+        "bbox_pt": [
+          315.5,
+          464.23,
+          427.75,
+          478.23
+        ],
+        "indent_from_left_margin_pt": 243.5,
+        "indent_in_tabs_0_5in": 6.76,
+        "summary": "r1c3"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[1]/w:tc[4]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          433.15,
+          464.23,
+          534.6,
+          475.73
+        ],
+        "indent_from_left_margin_pt": 361.15,
+        "indent_in_tabs_0_5in": 10.03,
+        "summary": "Measured"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[1]/w:tc[4]",
+        "style_id": null,
+        "bbox_pt": [
+          427.75,
+          464.23,
+          540.0,
+          478.23
+        ],
+        "indent_from_left_margin_pt": 355.75,
+        "indent_in_tabs_0_5in": 9.88,
+        "summary": "r1c4"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[2]/w:tc[1]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          77.4,
+          486.48,
+          178.85,
+          497.98
+        ],
+        "indent_from_left_margin_pt": 5.4,
+        "indent_in_tabs_0_5in": 0.15,
+        "summary": "Layout Engine"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[2]/w:tc[1]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          478.23,
+          184.25,
+          506.23
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "r2c1"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[2]/w:tc[2]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          189.65,
+          478.23,
+          310.1,
+          489.73
+        ],
+        "indent_from_left_margin_pt": 117.65,
+        "indent_in_tabs_0_5in": 3.27,
+        "summary": "Twips / Tab Stop Precision"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[2]/w:tc[2]",
+        "style_id": null,
+        "bbox_pt": [
+          184.25,
+          478.23,
+          315.5,
+          492.23
+        ],
+        "indent_from_left_margin_pt": 112.25,
+        "indent_in_tabs_0_5in": 3.12,
+        "summary": "r2c2"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[2]/w:tc[3]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          320.9,
+          478.23,
+          422.35,
+          489.73
+        ],
+        "indent_from_left_margin_pt": 248.9,
+        "indent_in_tabs_0_5in": 6.91,
+        "summary": "\u00b10.5 pt"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[2]/w:tc[3]",
+        "style_id": null,
+        "bbox_pt": [
+          315.5,
+          478.23,
+          427.75,
+          492.23
+        ],
+        "indent_from_left_margin_pt": 243.5,
+        "indent_in_tabs_0_5in": 6.76,
+        "summary": "r2c3"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[2]/w:tc[4]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          433.15,
+          478.23,
+          534.6,
+          489.73
+        ],
+        "indent_from_left_margin_pt": 361.15,
+        "indent_in_tabs_0_5in": 10.03,
+        "summary": "\u00b10.1 pt"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[2]/w:tc[4]",
+        "style_id": null,
+        "bbox_pt": [
+          427.75,
+          478.23,
+          540.0,
+          492.23
+        ],
+        "indent_from_left_margin_pt": 355.75,
+        "indent_in_tabs_0_5in": 9.88,
+        "summary": "r2c4"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[3]/w:tc[2]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          189.65,
+          492.23,
+          310.1,
+          503.73
+        ],
+        "indent_from_left_margin_pt": 117.65,
+        "indent_in_tabs_0_5in": 3.27,
+        "summary": "Table Grid & Merge Resolution"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[3]/w:tc[2]",
+        "style_id": null,
+        "bbox_pt": [
+          184.25,
+          492.23,
+          315.5,
+          506.23
+        ],
+        "indent_from_left_margin_pt": 112.25,
+        "indent_in_tabs_0_5in": 3.12,
+        "summary": "r3c2"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[3]/w:tc[3]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          320.9,
+          492.23,
+          422.35,
+          503.73
+        ],
+        "indent_from_left_margin_pt": 248.9,
+        "indent_in_tabs_0_5in": 6.91,
+        "summary": "100%"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[3]/w:tc[3]",
+        "style_id": null,
+        "bbox_pt": [
+          315.5,
+          492.23,
+          427.75,
+          506.23
+        ],
+        "indent_from_left_margin_pt": 243.5,
+        "indent_in_tabs_0_5in": 6.76,
+        "summary": "r3c3"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[3]/w:tc[4]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          433.15,
+          492.23,
+          534.6,
+          503.73
+        ],
+        "indent_from_left_margin_pt": 361.15,
+        "indent_in_tabs_0_5in": 10.03,
+        "summary": "100%"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[3]/w:tc[4]",
+        "style_id": null,
+        "bbox_pt": [
+          427.75,
+          492.23,
+          540.0,
+          506.23
+        ],
+        "indent_from_left_margin_pt": 355.75,
+        "indent_in_tabs_0_5in": 9.88,
+        "summary": "r3c4"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[4]/w:tc[1]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          77.4,
+          506.23,
+          178.85,
+          517.73
+        ],
+        "indent_from_left_margin_pt": 5.4,
+        "indent_in_tabs_0_5in": 0.15,
+        "summary": "Canvas Renderer"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[4]/w:tc[1]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          506.23,
+          184.25,
+          520.23
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "r4c1"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[4]/w:tc[2]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          189.65,
+          506.23,
+          310.1,
+          517.73
+        ],
+        "indent_from_left_margin_pt": 117.65,
+        "indent_in_tabs_0_5in": 3.27,
+        "summary": "150 DPI Page Export Latency"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[4]/w:tc[2]",
+        "style_id": null,
+        "bbox_pt": [
+          184.25,
+          506.23,
+          315.5,
+          520.23
+        ],
+        "indent_from_left_margin_pt": 112.25,
+        "indent_in_tabs_0_5in": 3.12,
+        "summary": "r4c2"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[4]/w:tc[3]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          320.9,
+          506.23,
+          422.35,
+          517.73
+        ],
+        "indent_from_left_margin_pt": 248.9,
+        "indent_in_tabs_0_5in": 6.91,
+        "summary": "< 50 ms"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[4]/w:tc[3]",
+        "style_id": null,
+        "bbox_pt": [
+          315.5,
+          506.23,
+          427.75,
+          520.23
+        ],
+        "indent_from_left_margin_pt": 243.5,
+        "indent_in_tabs_0_5in": 6.76,
+        "summary": "r4c3"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[4]/w:tc[4]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          433.15,
+          506.23,
+          534.6,
+          517.73
+        ],
+        "indent_from_left_margin_pt": 361.15,
+        "indent_in_tabs_0_5in": 10.03,
+        "summary": "18 ms"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[4]/w:tc[4]",
+        "style_id": null,
+        "bbox_pt": [
+          427.75,
+          506.23,
+          540.0,
+          520.23
+        ],
+        "indent_from_left_margin_pt": 355.75,
+        "indent_in_tabs_0_5in": 9.88,
+        "summary": "r4c4"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[5]/w:tc[1]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          77.4,
+          520.23,
+          310.1,
+          531.73
+        ],
+        "indent_from_left_margin_pt": 5.4,
+        "indent_in_tabs_0_5in": 0.15,
+        "summary": "Overall Pipeline Readiness (Offline Linux / SEMOSS MCP)"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[5]/w:tc[1]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          520.23,
+          315.5,
+          534.23
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "r5c1"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[5]/w:tc[2]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          320.9,
+          520.23,
+          422.35,
+          531.73
+        ],
+        "indent_from_left_margin_pt": 248.9,
+        "indent_in_tabs_0_5in": 6.91,
+        "summary": "99.9%"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[5]/w:tc[2]",
+        "style_id": null,
+        "bbox_pt": [
+          315.5,
+          520.23,
+          427.75,
+          534.23
+        ],
+        "indent_from_left_margin_pt": 243.5,
+        "indent_in_tabs_0_5in": 6.76,
+        "summary": "r5c3"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[5]/w:tc[3]/w:p[1]",
+        "style_id": null,
+        "bbox_pt": [
+          433.15,
+          520.23,
+          534.6,
+          531.73
+        ],
+        "indent_from_left_margin_pt": 361.15,
+        "indent_in_tabs_0_5in": 10.03,
+        "summary": "PASSED"
+      },
+      {
+        "kind": "table_cell",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]/w:tr[5]/w:tc[3]",
+        "style_id": null,
+        "bbox_pt": [
+          427.75,
+          520.23,
+          540.0,
+          534.23
+        ],
+        "indent_from_left_margin_pt": 355.75,
+        "indent_in_tabs_0_5in": 9.88,
+        "summary": "r5c4"
+      },
+      {
+        "kind": "table",
+        "xml_path": "word/document.xml:/w:body/w:tbl[1]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          464.23,
+          540.0,
+          534.23
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": ""
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[15]",
+        "style_id": "Heading1",
+        "bbox_pt": [
+          72.0,
+          548.23,
+          540.0,
+          566.75
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "3. System Architecture Figure"
+      },
+      {
+        "kind": "image",
+        "xml_path": "word/document.xml:/w:body/w:p[16]/w:r[1]",
+        "style_id": null,
+        "bbox_pt": [
+          151.2,
+          569.75,
+          460.8,
+          676.17
+        ],
+        "indent_from_left_margin_pt": 79.2,
+        "indent_in_tabs_0_5in": 2.2,
+        "summary": "309.6x106.4pt"
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[16]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          569.75,
+          540.0,
+          692.14
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": ""
+      },
+      {
+        "kind": "paragraph",
+        "xml_path": "word/document.xml:/w:body/w:p[17]",
+        "style_id": null,
+        "bbox_pt": [
+          72.0,
+          694.14,
+          540.0,
+          707.36
+        ],
+        "indent_from_left_margin_pt": 0.0,
+        "indent_in_tabs_0_5in": 0.0,
+        "summary": "Figure 1: Three-stage offline OpenXML to PNG rendering architecture."
+      }
+    ]
+  }
+]
