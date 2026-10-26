@@ -4,7 +4,7 @@ from .fonts import FontManager
 from .layout import LayoutEngine
 from .model import PageLayout, ParsedDocument
 from .parser import DocxParser
-from .renderer import CanvasRenderer, render_docx_to_png
+from .renderer import CanvasRenderer, parse_page_spec, render_docx_to_png
 
 __all__ = [
     "FontManager",
@@ -13,5 +13,6 @@ __all__ = [
     "CanvasRenderer",
     "PageLayout",
     "ParsedDocument",
+    "parse_page_spec",
     "render_docx_to_png",
 ]

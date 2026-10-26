@@ -728,16 +728,23 @@ class LayoutEngine:
                     idx += 1
                     continue
 
-                # Estimate if adding `atom` overflows `rel_end`
+                # Estimate if adding `atom` overflows the line's right boundary. Word measures tab
+                # stops from the left margin and honors them even when they sit outside the right
+                # indent, so a segment anchored to such a stop may legitimately reach past
+                # `rel_end` (TOC entries do this: the right dot-leader stop frequently clears the
+                # entry style's own right indent). Only the page column itself is a hard limit.
                 tentative_w = sum(a.width_pt for a in curr_seg_atoms) + atom.width_pt
+                seg_rel_end = rel_end
                 if curr_seg_align == "left":
                     projected_right = curr_seg_start_x + tentative_w
                 elif curr_seg_align == "right":
                     projected_right = max(curr_seg_target_x, curr_seg_prev_end_x + tentative_w)
+                    seg_rel_end = max(rel_end, min(curr_seg_target_x, col_w))
                 else:
                     projected_right = curr_seg_start_x + tentative_w
+                    seg_rel_end = max(rel_end, min(curr_seg_target_x, col_w))
 
-                if projected_right > rel_end + 0.5 and (curr_seg_atoms or segments):
+                if projected_right > seg_rel_end + 0.5 and (curr_seg_atoms or segments):
                     if atom.kind == "space":
                         idx += 1
                     break

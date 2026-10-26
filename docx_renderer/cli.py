@@ -21,6 +21,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--prefix", type=str, default="page", help="Filename prefix for rendered PNGs")
     parser.add_argument("--dpi", type=int, default=150, help="Render resolution in DPI (default: 150)")
     parser.add_argument(
+        "--pages",
+        type=str,
+        default=None,
+        metavar="SPEC",
+        help="Which pages to write: '3', '1-4', '1,3,5-7', '8-' (default: all). The whole document "
+        "is still laid out, so page numbers and headers/footers match a full render.",
+    )
+    parser.add_argument(
         "--ruler",
         action="store_true",
         help="Draw top 0.5-inch tab-stop ruler and margin guide lines for LLM visual inspection",
@@ -47,16 +55,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"Error: File not found: {args.docx_path}", file=sys.stderr)
         return 1
 
-    pngs = render_docx_to_png(
-        docx_path=args.docx_path,
-        output_dir=args.output_dir,
-        prefix=args.prefix,
-        dpi=args.dpi,
-        show_ruler=args.ruler,
-        show_bboxes=args.bboxes,
-        export_layout_json=args.json,
-        extra_font_dirs=args.font_dir,
-    )
+    try:
+        pngs = render_docx_to_png(
+            docx_path=args.docx_path,
+            output_dir=args.output_dir,
+            prefix=args.prefix,
+            dpi=args.dpi,
+            show_ruler=args.ruler,
+            show_bboxes=args.bboxes,
+            export_layout_json=args.json,
+            extra_font_dirs=args.font_dir,
+            pages=args.pages,
+        )
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
     for p in pngs:
         print(p)
     return 0

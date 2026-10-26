@@ -3,7 +3,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 import pymupdf as fitz
 
 from .fonts import FontManager
@@ -17,6 +17,48 @@ from .model import (
 )
 from .parser import DocxParser
 from .units import hex_to_rgb_norm
+
+PageSpec = Union[str, int, Iterable[int], None]
+
+
+def parse_page_spec(spec: PageSpec, total_pages: int) -> List[int]:
+    """Resolve a page selection to a sorted list of 1-based page numbers.
+
+    `spec` may be None (every page), a single int, an iterable of ints, or a string of
+    comma-separated numbers and ranges: ``"3"``, ``"1-4"``, ``"1,3,5-7"``, ``"8-"`` (page 8 to the
+    end), ``"-3"`` (start through page 3). Pages outside the document are dropped.
+    """
+    if spec is None:
+        return list(range(1, total_pages + 1))
+
+    wanted: set = set()
+    if isinstance(spec, int):
+        wanted.add(spec)
+    elif isinstance(spec, str):
+        try:
+            for part in spec.replace(" ", "").split(","):
+                if not part:
+                    continue
+                if "-" in part:
+                    lo_s, _, hi_s = part.partition("-")
+                    lo = int(lo_s) if lo_s else 1
+                    hi = int(hi_s) if hi_s else total_pages
+                    if lo < 1 or hi < 1:
+                        raise ValueError(part)
+                    wanted.update(range(min(lo, hi), max(lo, hi) + 1))
+                else:
+                    wanted.add(int(part))
+        except ValueError:
+            raise ValueError(
+                f"invalid page selection {spec!r}; expected e.g. '3', '1-4', '1,3,5-7' or '8-'"
+            ) from None
+    else:
+        wanted.update(int(n) for n in spec)
+
+    selected = sorted(n for n in wanted if 1 <= n <= total_pages)
+    if not selected:
+        raise ValueError(f"page selection {spec!r} matches no pages (document has {total_pages})")
+    return selected
 
 
 class CanvasRenderer:
@@ -48,16 +90,20 @@ class CanvasRenderer:
         show_bboxes: bool = False,
         export_layout_json: bool = False,
     ) -> List[Path]:
-        """Render each page to a PNG file in `output_dir` and return the list of file paths."""
+        """Render each page to a PNG file in `output_dir` and return the list of file paths.
+
+        Files are named after each page's own `page_number`, so a subset of a document keeps the
+        page numbers you asked for (`page_9.png` is page 9, not the first file written).
+        """
         out_dir = Path(output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
         pdf_doc = self.render_pages_to_pdf_doc(pages, show_ruler=show_ruler, show_bboxes=show_bboxes)
         png_paths: List[Path] = []
         try:
-            for idx, page in enumerate(pdf_doc):
+            for layout_pg, page in zip(pages, pdf_doc):
                 pix = page.get_pixmap(dpi=dpi, alpha=False)
-                out_path = out_dir / f"{prefix}_{idx + 1}.png"
+                out_path = out_dir / f"{prefix}_{layout_pg.page_number}.png"
                 pix.save(str(out_path))
                 png_paths.append(out_path)
         finally:
@@ -391,17 +437,25 @@ def render_docx_to_png(
     show_bboxes: bool = False,
     export_layout_json: bool = False,
     extra_font_dirs: Optional[List[str | Path]] = None,
+    pages: PageSpec = None,
 ) -> List[Path]:
     """
     High-level convenience pipeline:
     Parse .docx -> Resolve Styles/Themes/Numbering -> Run Word Box/Flow Layout -> Render PNGs.
+
+    `pages` limits which pages are rasterized -- ``"3"``, ``"1-4"``, ``"1,3,5-7"``, ``"8-"``, or an
+    iterable of page numbers; None (the default) writes every page. The whole document is always
+    parsed and laid out, so pagination, headers/footers and PAGE / NUMPAGES fields are identical to
+    a full render; only the slow rasterization step is skipped for pages you did not ask for.
     """
     fm = FontManager(extra_font_dirs=extra_font_dirs)
     parsed_doc = DocxParser(docx_path).parse()
-    pages = LayoutEngine(parsed_doc, font_manager=fm).layout_document()
+    laid_out = LayoutEngine(parsed_doc, font_manager=fm).layout_document()
+    wanted = set(parse_page_spec(pages, len(laid_out)))
+    selected = [pg for pg in laid_out if pg.page_number in wanted]
     renderer = CanvasRenderer(font_manager=fm)
     return renderer.render_to_png_files(
-        pages,
+        selected,
         output_dir=output_dir,
         prefix=prefix,
         dpi=dpi,

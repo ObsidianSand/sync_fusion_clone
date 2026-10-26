@@ -267,8 +267,11 @@ class DocxParser:
             base_hex = self.theme.colors.get(tkey)
 
         if not base_hex and val:
-            if val.lower() in ("auto", "none", "nil"):
-                return None if val.lower() in ("none", "nil") else "000000"
+            low = val.lower()
+            if low in ("auto", "none", "nil"):
+                # "auto" defers the choice to the consumer: Word resolves automatic *text* to
+                # black, but an automatic *fill* is the absence of shading, not a black cell.
+                return "000000" if low == "auto" and attr_val != "w:fill" else None
             if len(val) == 6:
                 base_hex = val.upper()
 
@@ -624,6 +627,29 @@ class DocxParser:
                 base.space_before_pt = 0.0
                 base.space_after_pt = 4.0
         return base
+
+    def is_toc_entry_style(self, style_id: Optional[str]) -> bool:
+        """True if `style_id` (or any style it is based on) formats a TOC / table-of-figures entry.
+
+        Word writes <w:rStyle w:val="Hyperlink"/> on every entry of a hyperlinked TOC field
+        (``TOC \\h``) but renders those entries with the entry paragraph style's own color, not
+        blue + underlined. The same applies to the lists a ``TOC \\c "Table"`` / ``\\c "Figure"``
+        field produces, which Word styles with ``table of figures`` (styleId ``TableofFigures``)
+        rather than ``toc N``, so the style name is checked alongside the styleId.
+        """
+        curr_id = style_id
+        visited = set()
+        while curr_id and curr_id not in visited:
+            visited.add(curr_id)
+            sdef = self.styles.get(curr_id)
+            for label in (curr_id, sdef.name if sdef is not None else ""):
+                low = "".join(label.lower().split())
+                if low in ("tableoffigures", "tableofauthorities"):
+                    return True
+                if low.startswith("toc") and (not low[3:] or low[3:].isdigit()):
+                    return True
+            curr_id = sdef.based_on if sdef is not None else None
+        return False
 
     def resolve_character_style(self, style_id: Optional[str]) -> RunStyle:
         rs = RunStyle()
@@ -988,7 +1014,7 @@ class DocxParser:
 
         # Parse inline runs, hyperlinks, SDTs, and fields
         runs = self._parse_inline_container(
-            p_el, rels, resolved_p.run_style, xml_path, is_toc_para=bool(style_id and style_id.lower().startswith("toc"))
+            p_el, rels, resolved_p.run_style, xml_path, is_toc_para=self.is_toc_entry_style(style_id)
         )
 
         return ParagraphBlock(

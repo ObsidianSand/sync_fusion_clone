@@ -7,3 +7,9 @@ __pycache__/
 dist/
 build/
 ~$*
+
+# local render output
+rendered_pages/
+output_pages/
+inspect_out/
+inspect_out_*/

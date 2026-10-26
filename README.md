@@ -43,6 +43,9 @@ python -m venv .venv
 # Standard clean render (150 DPI PNGs)
 python -m docx_renderer "Table of Contents template example.docx" -o output_pages --prefix page --dpi 150
 
+# Only the pages you care about: '3', '1-4', '1,3,5-7', '8-' (page 8 to the end)
+python -m docx_renderer "report.docx" -o output_pages --pages 1-4,9
+
 # LLM Visual Inspection Mode (with 0.5" tab ruler, bounding boxes, and XPath layout JSON)
 python -m docx_renderer "Table of Contents template example.docx" -o output_pages --prefix page_llm --dpi 150 --ruler --bboxes --json
 ```
@@ -59,5 +62,45 @@ png_paths = render_docx_to_png(
     show_ruler=True,
     show_bboxes=False,
     export_layout_json=True,
+    pages="1-4,9",   # str spec, int, iterable of ints, or None for every page
 )
 ```
+
+`pages` only skips rasterization — the slow step. The document is always parsed and laid out in
+full, so pagination, headers/footers and `PAGE` / `NUMPAGES` fields are identical to a full render,
+and each PNG is named after the page it actually is (`page_9.png` is page 9).
+
+---
+
+## Inspecting a render
+
+Two companion entry points render a document and then assert on the engine's own layout model
+(resolved run colors, emitted tab leaders) rather than on pixels, so the checks survive a change
+of DPI.
+
+```bash
+# Notebook: renders, shows pages inline, runs the checks.
+# Open inspect_render.ipynb in VS Code and select the project's .venv as the kernel.
+# (VS Code will offer to install ipykernel — the only package beyond the venv that it needs.)
+
+# Script: same checks, no Jupyter required.
+.venv\Scripts\python.exe inspect_render.py                      # every page + checks
+.venv\Scripts\python.exe inspect_render.py --pages 1-4          # just the front matter
+.venv\Scripts\python.exe inspect_render.py --pages 1,4,9-10 --open 1 4
+.venv\Scripts\python.exe inspect_render.py --pages 1-4 --ruler --bboxes --json
+.venv\Scripts\python.exe inspect_render.py --docx other.docx --dpi 150
+```
+
+The checks cover Word behaviors that are easy to regress:
+
+- **TOC entries are not hyperlinks.** Word writes `<w:rStyle w:val="Hyperlink"/>` on every entry
+  of a `TOC \h` field but renders the entry in its paragraph style's color. `DocxParser.is_toc_entry_style()`
+  recognizes the whole TOC family — `toc 1`..`toc 9`, `table of figures`, `table of authorities`,
+  and any style based on them — so a `TOC \c "Table"` list does not come out blue and underlined.
+- **TOC dot leaders survive.** TOC styles routinely put their right dot-leader tab stop *outside*
+  their own right indent. Word measures tab stops from the left margin and honors them anyway;
+  the line breaker does the same, instead of wrapping the page number onto its own line.
+- **Table cells are not filled black.** `<w:shd w:fill="auto"/>` is what Word writes for an
+  unshaded cell. `auto` defers the choice to the renderer and the two shading attributes resolve
+  differently: automatic *text* (`w:color`) is black, an automatic *fill* (`w:fill`) is no fill
+  at all.
