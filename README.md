@@ -108,3 +108,15 @@ The checks cover Word behaviors that are easy to regress:
   `w:trHeight` as the only floor. A fixed minimum silently pads every row -- a single line of 10pt
   Arial measures 11.5pt -- and over a long table that compounds into whole extra pages, stranding
   trailing paragraphs on a page of their own.
+- **Pagination matches Word's own record of it.** A `.docx` carries Word's layout of itself, so
+  pagination is checkable with no Word install. `word_truth.py` reads the three traces Word leaves
+  and documents which to trust: `docProps/app.xml` `<Pages>`, the cached `PAGEREF` result of every
+  TOC / Table of Tables / Table of Figures entry (one page-number anchor per heading and caption),
+  and the `<w:lastRenderedPageBreak/>` markers. **Score against the `PAGEREF` anchors.** Word
+  refreshes the markers lazily, so they go stale -- on the sample they report 83 pages where
+  `<Pages>` and all 118 anchors agree on 88. See `NOTES.md`.
+
+```bash
+# page count + per-heading anchor score against Word's own numbers
+.venv\Scripts\python.exe tools_compare_word_pagination.py
+```

@@ -26,6 +26,7 @@ PROJECT = Path(__file__).resolve().parent
 if str(PROJECT) not in sys.path:
     sys.path.insert(0, str(PROJECT))
 
+import word_truth as wt  # noqa: E402
 from docx_renderer import CanvasRenderer, DocxParser, FontManager, LayoutEngine, parse_page_spec  # noqa: E402
 from docx_renderer.model import ParagraphBlock, ParsedDocument, TableBlock  # noqa: E402
 
@@ -115,6 +116,48 @@ def check_no_blank_pages(pages) -> bool:
     return True
 
 
+def check_pagination_matches_word(docx: Path, pages) -> bool:
+    """Word records where it put each heading; we must put it on the same page.
+
+    Every TOC / Table of Tables / Table of Figures entry carries a `PAGEREF` field whose cached
+    result is the page Word resolved that heading, table caption or figure caption to -- one
+    assertable anchor per entry, spread over the whole document. `docProps/app.xml` `<Pages>` gives
+    the total to match. Deliberately *not* scored against `<w:lastRenderedPageBreak/>`, which Word
+    refreshes lazily; see `word_truth.py`.
+    """
+    recorded = wt.recorded_page_count(docx)
+    targets = wt.pageref_targets(docx)
+    page_of = wt.our_page_of_label(pages)
+
+    ok = True
+    print(f"  pages                : {len(pages)}  (Word's <Pages>: "
+          f"{recorded if recorded is not None else 'not recorded'})")
+    if recorded is not None and recorded != len(pages):
+        print(f"  FAIL - page count differs from Word's by {len(pages) - recorded:+d}")
+        ok = False
+
+    if not targets:
+        print("  SKIP - no TOC entries with PAGEREF fields")
+        return ok
+
+    misses = []
+    for t in targets:
+        our = page_of.get(t.target_label) if t.target_label else None
+        if our != t.word_page:
+            misses.append((t, our))
+    print(f"  PAGEREF anchors      : {len(targets) - len(misses)}/{len(targets)} on Word's page")
+    for t, our in misses[:12]:
+        print(f"    {t.entry_label:<10}{t.style_id:<16}Word={t.word_page:<4}"
+              f"ours={our if our is not None else '?':<5}{t.text[:34]}")
+    if len(misses) > 12:
+        print(f"    ... and {len(misses) - 12} more")
+    if misses:
+        print(f"  FAIL - {len(misses)} anchor(s) not on the page Word recorded")
+        return False
+    print("  PASS - every anchor on the page Word recorded")
+    return ok
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--docx", type=Path, default=DEFAULT_DOCX, help="input .docx")
@@ -166,6 +209,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         ok &= check_table_shading(doc)
         print("\nCheck 4 - no page may be blank")
         ok &= check_no_blank_pages(pages)
+        print("\nCheck 5 - pagination must match Word's own record of it")
+        ok &= check_pagination_matches_word(args.docx, pages)
 
     for n in args.open or []:
         target = args.output_dir / f"page_{n}.png"

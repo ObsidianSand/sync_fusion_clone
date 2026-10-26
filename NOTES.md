@@ -1,61 +1,82 @@
-# Open work
+# Notes
 
-## Pagination fidelity — we render 88 pages, Word renders 83
+## Resolved — the "we render 88 pages, Word renders 83" gap did not exist
 
-**Status:** open. Four bugs fixed (see git log on `fix/toc-rendering-and-page-selection`); this is
-what is left.
+**Status:** closed. Our pagination of the sample document matches Word's own record of it exactly.
+There was no 5-page gap and no height overestimate to chase; the measurement was wrong.
 
-### Where it stands
+### What the number actually was
 
-After removing the hardcoded 14 pt minimum table row height, the sample document
-(`NDA BLA XXXXXX - Safety Tables and Figures - 2 Columns RD.docx`) went from 91 pages to 88 with no
-blank pages, and body page boundaries agreeing with Word went from 1/78 to 23/78. The remaining
-gap is roughly 5 pages.
+The old `tools_compare_word_pagination.py` counted `<w:lastRenderedPageBreak/>` markers and got 83
+pages. Two better records of Word's own layout live in the same file and both say 88:
 
-### How to measure it
+| Word's record | says | vintage |
+|---|---|---|
+| `docProps/app.xml` `<Pages>` | **88 pages** | Word's last save |
+| 118 TOC / ToT / ToF `PAGEREF` field results | **every anchor on the page we put it on** | Word's last field update |
+| `<w:lastRenderedPageBreak/>` markers | 83 pages | stale — predates the field update |
+
+We render 88 pages, and all 118 headings, table captions and figure captions land on exactly the
+page Word recorded for them — including the last one, "Table 50 → page 88". Word refreshes the
+`lastRenderedPageBreak` markers only when it actually repaginates a region, so they can predate the
+last field update, and here they do.
+
+### Why the boundary score was also misleading
+
+The old tool scored 23/78 body boundaries. Of the 55 "disagreements":
+
+* **42 were one artifact.** Word puts its page-start marker on the first *run* of the new page. A
+  paragraph whose only content is a manual page break (`w:p[170]`, and 51 more like it) has no run
+  after the break, so the marker lands in the *next* paragraph while the break paragraph's own mark
+  is genuinely the first line on the new page. All 42 off-by-one-paragraph cases are exactly this,
+  verified individually — not one was a layout difference.
+* **1 was the tool's own bug.** It identified a page's first element by the last segment of the bbox
+  XPath, so a table cell's first paragraph (`.../w:tbl[22]/w:tr[1]/w:tc[1]/w:p[1]`) was reported as
+  body paragraph `w:p[1]`. `word_truth._body_label()` now matches the whole path.
+* **the rest were index shift.** The score zipped the two sequences positionally, so one extra entry
+  in the stale marker list made every later position disagree.
+
+Normalizing the page-break artifact, 80 of Word's 82 stale markers are also page starts of ours.
+The two that are not (`w:tbl[20]`, `w:tbl[26]`) sit in the stale data and cannot be scored.
+
+### How to measure it now
 
 ```bash
 .venv\Scripts\python.exe tools_compare_word_pagination.py
+.venv\Scripts\python.exe inspect_render.py --pages 1      # same thing as Check 5
 ```
 
-The `.docx` records Word's own pagination: Word writes a `<w:lastRenderedPageBreak/>` into the run
-where each page began, the last time it laid the document out. That is real ground truth — no Word
-install needed. The script lines those markers up against the first element on each of our
-`PageLayout`s and prints page count, blank pages, and the N/78 boundary-agreement score. Use that
-score as the objective function for any further layout change.
+`word_truth.py` reads all three of Word's records and documents which to trust. **Score against the
+`PAGEREF` anchors, not the markers.** The anchor score is a sharp regression detector: one extra
+page anywhere in the front matter shifts every later anchor, so it collapses from 118/118 to 0/118.
+Verified sensitive — a +1 pt bump to `_compute_line_height` gives 90 pages and 0/118. (A +0.5 pt
+bump still gives 88 pages and 118/118: most pages in this document end on a manual page break with
+300–500 pt of unused space, so they do not respond to small height changes at all.)
 
-**Caveat:** it only scores from `w:p[146]` onward (the `--from` default). Word's cached markers
-predate the last TOC regeneration, so the front matter — pages 1–9, the TOC / Table of Tables /
-Table of Figures — does not line up and tells you nothing.
+### Dead ends — do not re-litigate without a measurement
 
-### The remaining symptom
+* **"Word compresses inter-paragraph spacing at a page boundary."** Implemented in
+  `_layout_paragraph_on_page` and measured: it moved **zero** page boundaries. Not committed.
+* **"A few points of per-page height overestimate is pushing a trailing paragraph over."** This was
+  the standing hypothesis while the gap was believed real. It is wrong for this document: the pages
+  that break are nowhere near full. Measured unused space at the bottom of the 87 non-final pages:
+  min 7.9 pt, **median 357.9 pt**, max 512.3 pt — 72 of 87 pages end with over 200 pt to spare, and
+  only 7 are within 30 pt of full. They break on manual page breaks, not on overflow, so no
+  plausible per-page height error could move them.
+* **Multi-column sections.** Also ruled out as a cause here: every `w:sectPr` in the sample has a
+  bare `<w:cols w:space="720"/>` with no `w:num`, i.e. one column. ("2 Columns" in the filename
+  refers to the tables.)
 
-The boundaries that still disagree are all off by exactly one paragraph, in the same direction —
-our page starts one paragraph earlier than Word's:
+---
 
-| Word | ours |
-|---|---|
-| `w:p[171]` | `w:p[170]` |
-| `w:p[216]` | `w:p[215]` |
-| `w:p[222]` | `w:p[221]` |
-| `w:p[242]` | `w:p[241]` |
-| `w:p[256]` | `w:p[255]` |
+## Open — multi-column sections are parsed but not laid out
 
-and so on, re-syncing at `w:p[178]`, `189`, `204`, `231`, `297`, `332`, `367`. That pattern reads
-like one more systematic height overestimate of a few points per page, pushing a short trailing
-paragraph over each time. Prime suspects: line height for the `Caption` / `TableNote` styles, the
-`Heading3` space-before, or table row heights still being marginally tall.
+`SectionProps.cols_num` and `cols_space_pt` are parsed in `parser.py:876` and never read by
+`layout.py`. A document with a genuine `<w:cols w:num="2"/>` section would silently lay out
+single-column, at the wrong measure and the wrong page count. The sample document does not exercise
+this, so it is latent, not a live bug — and nothing in the checks would catch it today.
 
-### Dead end already explored
-
-Word compresses inter-paragraph spacing at a page boundary — a gap that would push an
-otherwise-fitting first line onto the next page gets truncated at the bottom margin instead of
-carried over. This was implemented in `_layout_paragraph_on_page` and measured: it changed **zero**
-page boundaries on this document. It may still be correct Word behavior, but it is not what is
-causing the drift here, so it was not committed. Don't re-litigate it without a test case that
-actually moves the score.
-
-### Related
+## Related
 
 `CanvasRenderer.render_to_png_files` numbers output by `page.page_number`. If pagination changes,
 rendered filenames change with it — any saved reference PNGs need regenerating.
