@@ -452,6 +452,10 @@ class LayoutEngine:
         col_x = self.col_x
         col_w = self.col_w
 
+        # Tokenize once: the atom stream does not depend on the column width, so its indices stay
+        # valid if the paragraph has to be re-broken against a differently sized column.
+        atoms = self._tokenize_paragraph(p, self.curr_page.page_number, max(1, len(self.pages)))
+
         # Build lines for this paragraph
         lines_data = self._break_paragraph_into_lines(
             p,
@@ -461,6 +465,7 @@ class LayoutEngine:
             total_pages=max(1, len(self.pages)),
             use_exclusions=True,
             start_y=self.cursor_y + gap_above,
+            atoms=atoms,
         )
 
         # If keep_lines or keep_next, check if whole paragraph fits on current page
@@ -486,31 +491,67 @@ class LayoutEngine:
                     total_pages=max(1, len(self.pages)),
                     use_exclusions=True,
                     start_y=self.cursor_y,
+                    atoms=atoms,
                 )
 
         self.cursor_y += gap_above
         p_start_y = self.cursor_y
         p_start_page = self.curr_page
 
-        for l_idx, ld in enumerate(lines_data):
+        def after_move(resume_at: int) -> None:
+            """Re-anchor the paragraph after the flow moved, re-measuring it if the column resized.
+
+            Columns of a section are usually all the same width, in which case the lines already
+            broken are still valid and this only updates the column origin. When the widths differ
+            -- a section with explicit <w:col> children -- the lines not yet placed have to be
+            broken again against the column they are actually going into.
+            """
+            nonlocal lines_data, col_x, col_w, p_start_y, p_start_page
+            p_start_y = self.cursor_y
+            p_start_page = self.curr_page
+            new_x, new_w = self.col_x, self.col_w
+            if abs(new_w - col_w) > 0.01 and resume_at < len(lines_data):
+                remainder = self._break_paragraph_into_lines(
+                    p,
+                    col_x=new_x,
+                    col_w=new_w,
+                    page_num=self.curr_page.page_number,
+                    total_pages=max(1, len(self.pages)),
+                    use_exclusions=True,
+                    start_y=self.cursor_y,
+                    atoms=atoms,
+                    start_atom=lines_data[resume_at]["atom_start"],
+                    is_continuation=resume_at > 0,
+                )
+                lines_data = lines_data[:resume_at] + remainder
+            col_x, col_w = new_x, new_w
+
+        l_idx = 0
+        while l_idx < len(lines_data):
+            ld = lines_data[l_idx]
+
             if ld.get("explicit_column_break_before"):
                 self._advance_flow()
-                p_start_y = self.cursor_y
-                p_start_page = self.curr_page
-                col_x, col_w = self.col_x, self.col_w
+                after_move(l_idx)
+                if l_idx >= len(lines_data):
+                    break
+                ld = lines_data[l_idx]
 
             if ld.get("explicit_page_break_before"):
                 self._new_page()
-                p_start_y = self.cursor_y
-                p_start_page = self.curr_page
-                col_x, col_w = self.col_x, self.col_w
+                after_move(l_idx)
+                if l_idx >= len(lines_data):
+                    break
+                ld = lines_data[l_idx]
 
             lh = ld["line_height"]
             if not self.is_top_of_page and (self.cursor_y + lh > self.page_bottom_limit):
                 self._advance_flow()
-                p_start_y = self.cursor_y
-                p_start_page = self.curr_page
-                col_x, col_w = self.col_x, self.col_w
+                after_move(l_idx)
+                if l_idx >= len(lines_data):
+                    break
+                ld = lines_data[l_idx]
+                lh = ld["line_height"]
 
             y_top = self.cursor_y
             # If floating exclusion pushed this line down, sync cursor_y
@@ -533,15 +574,13 @@ class LayoutEngine:
 
             if ld.get("explicit_page_break_after"):
                 self._new_page()
-                p_start_y = self.cursor_y
-                p_start_page = self.curr_page
-                col_x, col_w = self.col_x, self.col_w
+                after_move(l_idx + 1)
 
             if ld.get("explicit_column_break_after"):
                 self._advance_flow()
-                p_start_y = self.cursor_y
-                p_start_page = self.curr_page
-                col_x, col_w = self.col_x, self.col_w
+                after_move(l_idx + 1)
+
+            l_idx += 1
 
         # Record bounding box for the paragraph on its current page
         assert self.curr_page is not None
@@ -814,7 +853,19 @@ class LayoutEngine:
         total_pages: int,
         use_exclusions: bool = False,
         start_y: float = 0.0,
+        atoms: Optional[List[_InlineAtom]] = None,
+        start_atom: int = 0,
+        is_continuation: bool = False,
     ) -> List[dict]:
+        """Break a paragraph into lines against `col_w`.
+
+        `atoms` / `start_atom` resume part-way through a paragraph whose remainder has to be
+        re-broken -- when it flows into a column of a different width, the lines already placed
+        keep their own measure and only what is left is re-measured. Tokenization does not depend
+        on the width, so atom indices stay valid across a re-break. `is_continuation` suppresses
+        the first-line indent and the list marker, which belong to the line the paragraph started
+        on.
+        """
         ps = p.style
         base_rs = ps.run_style
         fam = base_rs.font_family or "Calibri"
@@ -825,7 +876,10 @@ class LayoutEngine:
         ind_right = ps.indent_right_pt or 0.0
         ind_fl = ps.indent_first_line_pt or 0.0
 
-        atoms = self._tokenize_paragraph(p, page_num, total_pages)
+        if atoms is None:
+            atoms = self._tokenize_paragraph(p, page_num, total_pages)
+        if start_atom >= len(atoms) and (is_continuation or atoms):
+            return []
 
         # Empty paragraph still occupies one blank line in MS Word
         if not atoms and not p.list_marker:
@@ -839,13 +893,14 @@ class LayoutEngine:
                     "rel_x_start": ind_left + ind_fl,
                     "rel_x_end": max(ind_left + ind_fl + 10.0, col_w - ind_right),
                     "list_marker_info": None,
+                    "atom_start": 0,
                 }
             ]
 
         # Prepare list marker info for line 0 if present
         marker_info = None
-        line0_text_rel_x = ind_left + ind_fl
-        if p.list_marker:
+        line0_text_rel_x = ind_left + ind_fl if not is_continuation else ind_left
+        if p.list_marker and not is_continuation:
             mrs = p.list_marker_style or base_rs
             mfam = mrs.font_family or fam
             msize = mrs.font_size_pt or fsize
@@ -861,12 +916,13 @@ class LayoutEngine:
             }
 
         lines: List[dict] = []
-        idx = 0
+        idx = start_atom
         n_atoms = len(atoms)
         curr_y = start_y
 
         while idx < n_atoms or (not lines and marker_info is not None):
-            is_first = len(lines) == 0
+            line_atom_start = idx
+            is_first = len(lines) == 0 and not is_continuation
             rel_start = line0_text_rel_x if is_first else ind_left
             rel_end = max(rel_start + 36.0, col_w - ind_right)
             y_override: Optional[float] = None
@@ -1023,6 +1079,7 @@ class LayoutEngine:
                     "rel_x_start": rel_start,
                     "rel_x_end": rel_end,
                     "list_marker_info": marker_info if is_first else None,
+                    "atom_start": line_atom_start,
                     "explicit_page_break_before": explicit_pb_before,
                     "explicit_page_break_after": explicit_pb_after,
                     "explicit_column_break_before": explicit_cb_before,

@@ -27,6 +27,8 @@ from docx_renderer.model import SectionProps
 
 # A letter page with 1" margins: 612 - 72 - 72 = 468 pt of text width.
 CONTENT_W = 468.0
+#: Distinct words, so a reading-order comparison pinpoints where a re-break went wrong.
+WORDS = "alpha bravo charlie delta echo foxtrot golf hotel india "
 MARGIN_L = 72.0
 MARGIN_TOP = 72.0
 
@@ -381,6 +383,105 @@ def test_balancing_works_when_the_final_set_began_mid_block(tmp_path: Path) -> N
     right = [d for d in drawn if d[0] == last and d[1] == 324.0]
     assert right, "the last page's right column must be used"
     assert abs(len(left) - len(right)) <= 2, f"not balanced: {len(left)} vs {len(right)}"
+
+
+def _set_explicit_columns(section, specs) -> None:
+    """Declare unequal columns: `specs` is a list of (width_twips, space_twips)."""
+    sectPr = section._sectPr
+    cols = sectPr.find(docx_qn("w:cols"))
+    if cols is None:
+        cols = OxmlElement("w:cols")
+        sectPr.append(cols)
+    cols.set(docx_qn("w:equalWidth"), "0")
+    cols.set(docx_qn("w:num"), str(len(specs)))
+    for width, space in specs:
+        col = OxmlElement("w:col")
+        col.set(docx_qn("w:w"), str(width))
+        col.set(docx_qn("w:space"), str(space))
+        cols.append(col)
+
+
+def _build_unequal(path: Path, reps: int = 120, first_line_indent_pt: float = 0.0) -> Path:
+    """One paragraph long enough to flow from a 300pt column into a 144pt one."""
+    doc = docx.Document()
+    doc.styles["Normal"].font.size = Pt(9)
+    s = doc.sections[0]
+    s.top_margin = s.bottom_margin = s.left_margin = s.right_margin = Inches(1.0)
+    _set_explicit_columns(s, [(6000, 480), (2880, 0)])   # 300pt + 24pt gutter + 144pt = 468pt
+    p = doc.add_paragraph(WORDS * reps)
+    if first_line_indent_pt:
+        p.paragraph_format.first_line_indent = Pt(first_line_indent_pt)
+    doc.save(str(path))
+    return path
+
+
+def _column_of(x: float, col_xs) -> float:
+    """The origin of the column a drawn run sits in."""
+    at_or_left = [c for c in col_xs if x >= c - 0.5]
+    return max(at_or_left) if at_or_left else col_xs[0]
+
+
+def _reading_order_words(pages, col_xs):
+    """Every drawn word, in reading order: by page, then column, then line, then x."""
+    words = []
+    for pg in sorted(pages, key=lambda p: p.page_number):
+        for cx in col_xs:
+            lines = {}
+            for t in pg.texts:
+                if _column_of(t.x, col_xs) == cx:
+                    lines.setdefault(round(t.y_baseline, 2), []).append(t)
+            for y in sorted(lines):
+                for t in sorted(lines[y], key=lambda run: run.x):
+                    words.extend((t.text or "").split())
+    return words
+
+
+def test_unequal_columns_wrap_at_their_own_width(tmp_path: Path) -> None:
+    """A paragraph flowing into a narrower column must be re-broken against it.
+
+    Keeping the wide column's measure runs the narrow column's lines clean off the page.
+    """
+    pages = _layout(_build_unequal(tmp_path / "uneq.docx"))
+    narrow_x = 396.0                      # 72 + 300 + 24
+    right_edge = narrow_x + 144.0         # == 540, the page's right text edge
+
+    in_narrow = [t for pg in pages for t in pg.texts if t.x >= narrow_x - 0.5]
+    assert in_narrow, "the paragraph should have flowed into the second column"
+    assert max(t.x for t in in_narrow) <= right_edge, (
+        f"text reaches x={max(t.x for t in in_narrow):.1f}, past the {right_edge:.0f}pt right edge"
+    )
+
+
+def test_reflowing_into_a_narrower_column_loses_no_words(tmp_path: Path) -> None:
+    """The seam is where a re-break could duplicate or drop content."""
+    reps = 120
+    pages = _layout(_build_unequal(tmp_path / "uneq.docx", reps=reps))
+    got = _reading_order_words(pages, [MARGIN_L, 396.0])
+    expected = (WORDS * reps).split()
+    assert got == expected, (
+        f"{len(got)} words laid out, expected {len(expected)}; "
+        f"first difference at {next((i for i, (a, b) in enumerate(zip(got, expected)) if a != b), 'none')}"
+    )
+
+
+def test_continuation_in_a_new_column_is_not_first_line_indented(tmp_path: Path) -> None:
+    """Only the line the paragraph starts on carries the first-line indent."""
+    first_page = _layout(_build_unequal(tmp_path / "ind.docx", first_line_indent_pt=36.0))[0]
+
+    def first_line_x(runs):
+        top = min(t.y_baseline for t in runs)
+        return min(t.x for t in runs if abs(t.y_baseline - top) < 0.01)
+
+    narrow = [t for t in first_page.texts if t.x >= 396.0 - 0.5]
+    wide = [t for t in first_page.texts if t.x < 396.0 - 0.5]
+    assert narrow and wide, "expected the paragraph to span both columns"
+
+    # The paragraph's own first line is indented...
+    assert first_line_x(wide) == pytest.approx(MARGIN_L + 36.0, abs=0.5)
+    # ...the continuation at the top of the next column is not.
+    assert first_line_x(narrow) == pytest.approx(396.0, abs=0.5), (
+        "the continuation should start at the column edge, not indented like a new paragraph"
+    )
 
 
 def test_single_column_document_is_unchanged_by_column_support(tmp_path: Path) -> None:

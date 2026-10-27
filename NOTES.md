@@ -96,6 +96,14 @@ of each column, and the engine fills them one at a time.
   re-flows it under a cap on how far down any column may run, binary-searching for the shortest cap
   the content still fits under. `used / columns` is the ideal, but lines are indivisible, so the
   search walks back up from there.
+* **Re-measuring across unequal columns.** A paragraph is broken into lines against the column it
+  starts in. When it flows into a column of a *different* width — a section with explicit `<w:col>`
+  children — the lines not yet placed are broken again against the column they are actually going
+  into. `_tokenize_paragraph` does not depend on the width, so each line records the atom it began
+  at and the remainder is re-broken from there; the continuation drops the first-line indent and
+  the list marker, which belong to the line the paragraph started on. Without this the narrow
+  column kept the wide column's measure and ran its text clean off the page (x=677 on a 612pt
+  sheet). Equal-width columns never trigger it, so the common case is untouched.
 * **Resuming after a column set.** Content following a column set starts below the *tallest*
   column. The cursor sits at the bottom of whichever column was filled last — usually the shortest,
   and after balancing reliably so — so resuming there ran the next section back up over the bottom
@@ -113,10 +121,9 @@ full-width column fails every behavioral test and leaves only the single-column 
   neither (its whole last set spilled in from the page before, with no block boundary on it) is
   left filled rather than balanced. The cap search is also bounded at 12 iterations, so a result
   can sit a line off the theoretical even split.
-* **Unequal columns, mid-paragraph.** A paragraph is broken into lines against the column it starts
-  in. If it overflows into a column of a *different* width, the lines already broken keep the
-  original measure. Equal-width columns — the default, and what `w:equalWidth` gives — are
-  unaffected, and the re-break on the `keep_lines` / `keep_next` path is correct either way.
+* **Tables are not re-measured across unequal columns.** Paragraphs are (see above), but a table's
+  column widths are resolved once, against the column it starts in; continuing into a narrower one
+  shifts it sideways without re-fitting. Equal-width columns are unaffected.
 * **No Word-recorded ground truth.** Unlike pagination, these tests assert spec arithmetic and
   reading order, because a python-docx fixture carries no `<Pages>` and no `PAGEREF` results. To get
   real ground truth, open `tests`' generated fixture in Word, save it, and the records described
