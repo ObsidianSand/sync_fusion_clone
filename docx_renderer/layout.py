@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import List, Optional, Tuple, Union
 
 from .fonts import FontManager
@@ -56,6 +56,10 @@ class _LaidOutBox:
     images: List[DrawImageCmd] = field(default_factory=list)
     texts: List[DrawTextCmd] = field(default_factory=list)
     bboxes: List[ElementBBox] = field(default_factory=list)
+    #: Box-local y values at which the content may be divided across pages without cutting through
+    #: anything: the bottom of every line, and the boundary between rows of a nested table.
+    #: Ascending. Used to split a table row that does not fit on the page.
+    breaks: List[float] = field(default_factory=list)
 
     def offset_by(self, dx: float, dy: float) -> None:
         for r in self.rects:
@@ -77,6 +81,7 @@ class _LaidOutBox:
             bb.x1 += dx
             bb.y0 += dy
             bb.y1 += dy
+        self.breaks = [b + dy for b in self.breaks]
 
 
 @dataclass
@@ -106,6 +111,54 @@ def _stays_on_page(prev: SectionProps, nxt: SectionProps) -> bool:
         and abs(prev.page_height_pt - nxt.page_height_pt) < 0.5
         and prev.orientation == nxt.orientation
     )
+
+
+def _split_box(box: _LaidOutBox, cut: float) -> Tuple[_LaidOutBox, _LaidOutBox]:
+    """Divide a laid-out box at box-local `cut` into the part above it and the part below it.
+
+    The part below is re-based so its top is y=0. `cut` should be one of `box.breaks`, which no line
+    of text straddles; text and images are assigned whole by where they start. Rectangles, rules
+    and element boxes that cross the cut -- cell shading, the vertical borders of a nested table, a
+    paragraph's bbox -- are clipped into a piece on each side.
+    """
+    top = _LaidOutBox(height_pt=cut)
+    rest = _LaidOutBox(height_pt=max(0.0, box.height_pt - cut))
+
+    for tx in box.texts:
+        if tx.y_baseline < cut:
+            top.texts.append(replace(tx))
+        else:
+            rest.texts.append(replace(tx, y_baseline=tx.y_baseline - cut))
+    for im in box.images:
+        if im.y < cut:
+            top.images.append(replace(im))
+        else:
+            rest.images.append(replace(im, y=im.y - cut))
+    for r in box.rects:
+        y0, y1 = r.y, r.y + r.height
+        if y0 < cut:
+            top.rects.append(replace(r, height=min(y1, cut) - y0))
+        if y1 > cut:
+            ny0 = max(y0, cut)
+            rest.rects.append(replace(r, y=ny0 - cut, height=y1 - ny0))
+    for ln in box.lines:
+        lo, hi = min(ln.y0, ln.y1), max(ln.y0, ln.y1)
+        if hi <= cut and not (lo == hi == cut):
+            top.lines.append(replace(ln))
+        elif lo >= cut:
+            rest.lines.append(replace(ln, y0=ln.y0 - cut, y1=ln.y1 - cut))
+        else:
+            # Crosses the cut: only vertical rules (cell and nested-table borders) do in practice.
+            top.lines.append(replace(ln, y0=min(ln.y0, cut), y1=min(ln.y1, cut)))
+            rest.lines.append(replace(ln, y0=max(ln.y0, cut) - cut, y1=max(ln.y1, cut) - cut))
+    for bb in box.bboxes:
+        if bb.y0 < cut:
+            top.bboxes.append(replace(bb, y1=min(bb.y1, cut)))
+        if bb.y1 > cut:
+            rest.bboxes.append(replace(bb, y0=max(bb.y0, cut) - cut, y1=bb.y1 - cut))
+    top.breaks = [b for b in box.breaks if b <= cut]
+    rest.breaks = [b - cut for b in box.breaks if b > cut]
+    return top, rest
 
 
 class LayoutEngine:
@@ -680,6 +733,7 @@ class LayoutEngine:
                         is_last_line=(l_idx == len(lines_data) - 1),
                     )
                     curr_y += lh
+                    box.breaks.append(curr_y)
 
                 if curr_y > p_y0:
                     summary_txt = "".join(r.text for r in blk.runs if r.kind == "text")[:60]
@@ -707,6 +761,7 @@ class LayoutEngine:
                 box.images.extend(tbl_box.images)
                 box.texts.extend(tbl_box.texts)
                 box.bboxes.extend(tbl_box.bboxes)
+                box.breaks.extend(tbl_box.breaks)
                 curr_y += tbl_box.height_pt
                 prev_after = 0.0
 
@@ -1639,8 +1694,11 @@ class LayoutEngine:
         all_row_recs: List[dict],
         table_x: float,
         row_y: float,
+        height_override: Optional[float] = None,
     ) -> None:
-        row_h = row_rec["height"]
+        """Draw one row. `height_override` draws a fragment of a row split across pages, whose
+        height is not the one recorded in `all_row_recs` (only rows without vertical merges split,
+        so every cell of a fragment is exactly that tall)."""
         for entry in row_rec["cells"]:
             cell: TableCell = entry["cell"]
             if cell.v_merge == "continue":
@@ -1648,7 +1706,10 @@ class LayoutEngine:
 
             r_idx = entry["r_idx"]
             v_span = entry["v_span_rows"]
-            cell_h = sum(all_row_recs[rr]["height"] for rr in range(r_idx, r_idx + v_span))
+            if height_override is not None:
+                cell_h = height_override
+            else:
+                cell_h = sum(all_row_recs[rr]["height"] for rr in range(r_idx, r_idx + v_span))
             cx = table_x + entry["x_off"]
             cw = entry["width"]
 
@@ -1738,6 +1799,52 @@ class LayoutEngine:
                 )
             )
 
+    def _split_row(self, rr: dict, avail: float) -> Optional[Tuple[dict, dict]]:
+        """Split row record `rr` into a first part at most `avail` tall and the remainder.
+
+        Each cell keeps the lines that fit -- cut at the last line boundary above its share of
+        `avail`, after its top and bottom padding -- and carries the rest into the remainder, so
+        cells cut at their own points, not a common one. Returns None when the row may not or
+        cannot be split: `w:cantSplit`, a repeating header row, an exact-height row, a row taking
+        part in a vertical merge (its cells span rows that would have to split together), or
+        when not a single line of any cell fits.
+        """
+        row: TableRow = rr["row"]
+        if row.cant_split or row.is_header or (row.height_rule == "exact" and row.height_pt > 0):
+            return None
+        if any(e["cell"].v_merge is not None for e in rr["cells"]):
+            return None
+
+        first_cells: List[dict] = []
+        rest_cells: List[dict] = []
+        progressed = remaining = False
+        for e in rr["cells"]:
+            ibox: _LaidOutBox = e["inner_box"]
+            pads = e["pad_t"] + e["pad_b"]
+            budget = avail - pads
+            if ibox.height_pt <= budget:
+                cut = ibox.height_pt
+            else:
+                fitting = [b for b in ibox.breaks if 0.0 < b <= budget]
+                cut = fitting[-1] if fitting else 0.0
+                remaining = True
+            progressed = progressed or cut > 0.0
+            top, rest = _split_box(ibox, cut)
+            first_cells.append(dict(e, inner_box=top, req_height=top.height_pt + pads))
+            rest_cells.append(dict(e, inner_box=rest, req_height=rest.height_pt + pads))
+
+        # Nothing left over means the row is tall only because of `w:trHeight`, not its content.
+        if not (progressed and remaining):
+            return None
+
+        first_h = max(c["req_height"] for c in first_cells)
+        rest_h = max(c["req_height"] for c in rest_cells)
+        if row.height_pt > 0:  # an atLeast minimum applies to the row as a whole
+            rest_h = max(rest_h, row.height_pt - first_h)
+        first = {"row": row, "height": first_h, "cells": first_cells, "fragment": True}
+        rest = {"row": row, "height": rest_h, "cells": rest_cells, "fragment": True}
+        return first, rest
+
     def _layout_table_on_page(self, tb: TableBlock) -> None:
         assert self.curr_page is not None
         # A table in a multi-column section is laid out inside its column, not across the page.
@@ -1774,37 +1881,68 @@ class LayoutEngine:
 
         tbl_start_y = self.cursor_y
 
-        for r_idx, rr in enumerate(row_recs):
-            rh = rr["height"]
-            if not self.is_top_of_page and (self.cursor_y + rh > self.page_bottom_limit):
-                # Record table bbox on current page before breaking
-                if self.cursor_y > tbl_start_y:
-                    self.curr_page.bboxes.append(
-                        ElementBBox(
-                            kind="table",
-                            xml_path=tb.xml_path,
-                            x0=table_x,
-                            y0=tbl_start_y,
-                            x1=table_x + total_tbl_w,
-                            y1=self.cursor_y,
-                            style_id=tb.style_id,
-                        )
+        def break_flow(r_idx: int) -> None:
+            """Close the table on this page/column and continue it in the next one."""
+            nonlocal tbl_start_y, table_x, flow_x
+            if self.cursor_y > tbl_start_y:
+                self.curr_page.bboxes.append(
+                    ElementBBox(
+                        kind="table",
+                        xml_path=tb.xml_path,
+                        x0=table_x,
+                        y0=tbl_start_y,
+                        x1=table_x + total_tbl_w,
+                        y1=self.cursor_y,
+                        style_id=tb.style_id,
                     )
-                self._advance_flow()
-                tbl_start_y = self.cursor_y
-                # Follow the flow into the next column: the rows already measured keep their
-                # widths, so the table only shifts sideways by the column delta.
-                table_x += self.col_x - flow_x
-                flow_x = self.col_x
-                # Repeat header rows on new page if we are past the header rows
-                if r_idx >= len(header_recs):
-                    for h_rr in header_recs:
-                        self._emit_table_row(self.curr_page, tb, h_rr, row_recs, table_x, self.cursor_y)
-                        self.cursor_y += h_rr["height"]
-                        self.is_top_of_page = False
+                )
+            self._advance_flow()
+            tbl_start_y = self.cursor_y
+            # Follow the flow into the next column: the rows already measured keep their
+            # widths, so the table only shifts sideways by the column delta.
+            table_x += self.col_x - flow_x
+            flow_x = self.col_x
+            # Repeat header rows on new page if we are past the header rows
+            if r_idx >= len(header_recs):
+                for h_rr in header_recs:
+                    self._emit_table_row(self.curr_page, tb, h_rr, row_recs, table_x, self.cursor_y)
+                    self.cursor_y += h_rr["height"]
+                    self.is_top_of_page = False
 
-            self._emit_table_row(self.curr_page, tb, rr, row_recs, table_x, self.cursor_y)
-            self.cursor_y += rh
+        for r_idx, rr in enumerate(row_recs):
+            #: True right after moving to a fresh page/column for this row. Repeated header rows
+            #: clear is_top_of_page, so this -- not is_top_of_page -- is what says moving on again
+            #: cannot help; relying on is_top_of_page looped forever on an unsplittable tall row.
+            fresh = False
+            while self.cursor_y + rr["height"] > self.page_bottom_limit:
+                # Word lets a row break across pages unless it is marked cantSplit: as many lines
+                # of each cell as fit stay here, and the rest of the row continues on the next
+                # page. Without this, a row taller than the page was drawn whole from the top of
+                # it and everything below the bottom edge was lost -- which on a 612 pt landscape
+                # page happens to cells only ~470 pt tall.
+                split = self._split_row(rr, self.page_bottom_limit - self.cursor_y)
+                if split is not None:
+                    first, rr = split
+                    self._emit_table_row(
+                        self.curr_page, tb, first, row_recs, table_x, self.cursor_y,
+                        height_override=first["height"],
+                    )
+                    self.cursor_y += first["height"]
+                    self.is_top_of_page = False
+                    break_flow(r_idx)
+                    fresh = True
+                elif self.is_top_of_page or fresh:
+                    # Unsplittable and taller than an empty page: nowhere better to put it.
+                    break
+                else:
+                    break_flow(r_idx)
+                    fresh = True
+
+            self._emit_table_row(
+                self.curr_page, tb, rr, row_recs, table_x, self.cursor_y,
+                height_override=rr["height"] if rr.get("fragment") else None,
+            )
+            self.cursor_y += rr["height"]
             self.is_top_of_page = False
 
         if self.cursor_y > tbl_start_y:
@@ -1843,6 +1981,8 @@ class LayoutEngine:
         for rr in row_recs:
             self._emit_table_row(box, tb, rr, row_recs, table_x, curr_y)
             curr_y += rr["height"]
+            # Only between rows: a nested table's rows are not themselves split.
+            box.breaks.append(curr_y)
         box.height_pt = curr_y
         return box
 

@@ -129,6 +129,50 @@ full-width column fails every behavioral test and leaves only the single-column 
   real ground truth, open `tests`' generated fixture in Word, save it, and the records described
   above become available.
 
+## Done — content cut off at the bottom of landscape pages
+
+Reported symptom: a landscape page whose content stopped part-way down, the rest missing. Two
+separate causes, both of which draw past the page edge instead of moving content to the next page,
+and both of which landscape pages (612 pt tall, ~470 pt of text height) hit first.
+
+* **A continuous break that changes page size.** A continuous break always stayed on the current
+  page. Into a section of a different size or orientation, the content was laid out against the
+  *new* section's geometry on the *old* page: a portrait section after a landscape page flowed down
+  to y≈720 on a 612 pt page (cut off at the bottom), and a landscape section after a portrait page
+  ran to x≈702 on a 612 pt page (cut off at the right). One page cannot be two sizes, so
+  `_stays_on_page()` now treats such a break as a new-page break. It also gates column balancing,
+  which is triggered by a following continuous break that genuinely shares the page.
+* **Table rows never split.** A row that did not fit was moved whole to the next page, and a row
+  taller than a page was drawn from the top of it with everything past the bottom edge lost. Word
+  breaks a row across pages unless it is `w:cantSplit`. `_split_row()` now keeps the lines of each
+  cell that fit — every cell cuts at its own last line boundary, recorded in `_LaidOutBox.breaks`
+  — and the remainder continues on the next page under any repeating header rows. `_split_box()`
+  clips shading, vertical rules and bboxes that straddle the cut.
+
+Covered by `tests/test_page_setup.py` (8 tests). Verified non-vacuous: reverting the page-size check
+fails the two orientation tests, disabling `_split_row` fails the three splitting tests, and
+ignoring `cantSplit` fails its test. The 88-page sample is unchanged at 118/118 anchors.
+
+One bug found while doing it: with a repeating header row, the header placed at the top of each
+new page clears `is_top_of_page`, so an unsplittable row taller than the page looked like it could
+still benefit from another page and the loop started new pages forever. The row loop now tracks
+that it has already moved on (`fresh`), and a test runs that case under a timeout.
+
+### Known limitations
+
+* **Rows in a vertical merge are not split.** A `vMerge` cell spans rows that would have to break
+  together; such rows still move or overflow whole as before. So do exact-height rows and header
+  rows.
+* **Nested tables split only between their rows**, and images are never split: an inline image
+  taller than the space left goes whole to one side of the cut.
+* **No Word widow/orphan control inside a split cell.** A cell can leave a single line of a
+  paragraph on either side of the break.
+* **Which bottom margin governs a shared page is unverified.** When a continuous break with the
+  same page size but a different bottom margin falls part-way down a page, we use the later
+  section's margin for the rest of that page. The 2025 integrated guide sample
+  (`standard_safety_tables_and_figures_integrated_guide_2025.docx`) does this repeatedly, e.g. page
+  105, but carries no Word layout record to check against; saving it from Word would provide one.
+
 ## Related
 
 `CanvasRenderer.render_to_png_files` numbers output by `page.page_number`. If pagination changes,
