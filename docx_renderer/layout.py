@@ -89,6 +89,25 @@ class _ExclusionZone:
     wrap_type: str = "square"       # 'square', 'tight', 'topAndBottom'
 
 
+def _stays_on_page(prev: SectionProps, nxt: SectionProps) -> bool:
+    """Whether section `nxt` begins on the page `prev` ends on, rather than on a new one.
+
+    Only a continuous break shares a page -- and only when the page itself does not change. One
+    page cannot be two sizes, so a continuous break into a section with a different page size or
+    orientation starts a new page, as a next-page break would. Without this, a landscape section
+    following a portrait one continuously was laid out at landscape measure on the portrait page
+    (clipped at the right edge), and a portrait section following a landscape one flowed down to
+    the portrait bottom margin on a page only 612 pt tall (clipped at the bottom).
+    """
+    if nxt.break_type != "continuous":
+        return False
+    return (
+        abs(prev.page_width_pt - nxt.page_width_pt) < 0.5
+        and abs(prev.page_height_pt - nxt.page_height_pt) < 0.5
+        and prev.orientation == nxt.orientation
+    )
+
+
 class LayoutEngine:
     """Converts a ParsedDocument into a list of PageLayout objects with exact coordinates."""
 
@@ -132,9 +151,10 @@ class LayoutEngine:
         sections.append((self.doc.final_sect_pr, curr_blocks))
 
         for s_idx, (sect_pr, blocks) in enumerate(sections):
+            prev_sect = self.curr_sect
             self.curr_sect = sect_pr
             self.sect_first_page = True
-            if s_idx == 0 or sect_pr.break_type != "continuous":
+            if s_idx == 0 or not _stays_on_page(prev_sect, sect_pr):
                 self._new_page()
             else:
                 # A continuous break keeps the page but starts a fresh column set on it, which is
@@ -160,7 +180,7 @@ class LayoutEngine:
             balancing = (
                 sect_pr.cols_num > 1
                 and next_sect is not None
-                and next_sect.break_type == "continuous"
+                and _stays_on_page(sect_pr, next_sect)
             )
             marks: List[Tuple[int, dict]] = []
 
