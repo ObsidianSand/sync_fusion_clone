@@ -214,6 +214,43 @@ changes fails its own test, and three of them also fail the report regression te
 * **Unverified edge cases of the max rule:** `w:beforeAutospacing` / `afterAutospacing` (HTML
   spacing) and spacing around tables inside cells were not measured.
 
+## Done — pagination no longer depends on the installed fonts
+
+Reported symptom: in the MCP environment, the figure report's page 2 still pushed the Figure 3
+heading and header row to page 3 after the spacing fixes above. Cause: that environment has no
+Microsoft fonts. Line heights came from whichever font file `get_font` found, so there the
+built-in Helvetica/Times stood in for Calibri/Cambria with different ascent/descent. Simulated by
+indexing no font files: the 88-page sample went to 91 pages, **7/118** anchors, and the report lost
+its page 2 layout. Every document rendered there was affected, not only this one.
+
+`FAMILY_VERTICAL_METRICS` in `fonts.py` records the ascent/descent ratios of the Microsoft
+families, as PyMuPDF reads them from the Windows files (the same numbers the layout was calibrated
+against), and `get_metrics` uses them whatever file is found. A family outside the table with no
+file uses its category fallback's values (Calibri / Cambria / Consolas), as Word would. With no
+fonts at all: sample 88 pages, 118/118; report 11 pages, page 2 correct. Nothing changes on a
+machine that has the fonts.
+
+A workaround tried first (`02d0e87`, reverted) cut a table row at the exact space left when no
+line boundary fit. Text and images are assigned whole to one side of a cut, so with the real
+fonts it drew Figure 3's charts off the bottom of page 2 and left an empty box on page 3 (14 images
+past the bottom, 5/10 page starts).
+
+Covered by `tests/test_font_independence.py`: metrics equal with and without fonts for every
+family and style; both documents paginate like Word with no fonts; and nothing in the body —
+bboxes *or drawn images*, since a split row clips its bboxes but not the image it draws — ends below
+the bottom margin, with and without fonts. Verified non-vacuous: undoing the metrics table fails
+42 of them; re-applying `02d0e87` fails the overflow test on the report.
+
+### Known limitations
+
+* **Widths still come from the file found.** Without Calibri, text is measured in Helvetica, which
+  is wider, so a long line can wrap differently and shift a page. Neither sample hits this.
+  Bundling Carlito (Calibri's exact widths, SIL OFL) would close it; Caladea is close to Cambria
+  but not exact (~5% narrower on a sample line). Not bundled, to keep the package lean.
+* **Built-in fonts lack some characters**: an em dash draws as "·". Cosmetic; layout unaffected.
+* **Families outside the table** (e.g. Tahoma) still take their file's metrics when present, and
+  so can paginate differently between machines that do and do not have them.
+
 ## Related
 
 `CanvasRenderer.render_to_png_files` numbers output by `page.page_number`. If pagination changes,

@@ -71,6 +71,26 @@ FONT_CANDIDATES: Dict[str, Dict[Tuple[bool, bool], List[str]]] = {
     },
 }
 
+#: Vertical metrics (ascender, descender as positive fractions of the em) of the Microsoft fonts,
+#: as PyMuPDF reports them from the Windows font files. Line heights -- and so pagination -- come
+#: from these, not from whatever file `get_font` finds, so layout does not depend on the fonts
+#: installed. Without this, a Linux container with no Microsoft fonts fell back to the built-in
+#: Helvetica/Times and paginated the 88-page sample at 91 pages, 7/118 anchors (118/118 with).
+#: Recorded on Windows 11, identical across each family's regular/bold/italic files; regenerate
+#: with `{fam: (f.ascender, -f.descender) for fam in FONT_CANDIDATES}` on a machine that has them.
+FAMILY_VERTICAL_METRICS: Dict[str, Tuple[float, float]] = {
+    "calibri": (0.75, 0.25),
+    "calibri light": (0.75, 0.25),
+    "cambria": (0.9501953125, 0.22216796875),
+    "arial": (0.9052734375, 0.2119140625),
+    "times new roman": (0.89111328125, 0.21630859375),
+    "courier new": (0.83251953125, 0.30029296875),
+    "consolas": (0.74267578125, 0.25732421875),
+    "segoe ui": (1.0791015625, 0.2509765625),
+    "verdana": (1.00537109375, 0.2099609375),
+    "georgia": (0.9169921875, 0.21923828125),
+}
+
 SERIF_FAMILIES = {"cambria", "times new roman", "times", "georgia", "garamond", "palatino", "book antiqua", "caladea"}
 MONO_FAMILIES = {"courier new", "courier", "consolas", "lucida console", "monaco", "dejavu sans mono", "liberation mono"}
 
@@ -221,6 +241,27 @@ class FontManager:
             width += char_spacing_pt * len(text)
         return width
 
+    def _vertical_ratios(self, family: Optional[str], bold: bool, italic: bool) -> Tuple[float, float]:
+        """(ascender, descender) as fractions of the em, both positive.
+
+        Families in FAMILY_VERTICAL_METRICS use the recorded values whatever file was found, so a
+        machine without the Microsoft fonts paginates like one with them. Any other family is read
+        from its own file when it has one. When it has none, Word would fall back the way
+        `get_font` does -- to Calibri, Cambria or Consolas by category -- so the fallback family's
+        recorded values apply, not those of the built-in face drawn in its place.
+        """
+        fam_key = (family or "Calibri").strip().lower()
+        if fam_key in FAMILY_VERTICAL_METRICS:
+            return FAMILY_VERTICAL_METRICS[fam_key]
+        fobj, path, _ = self.get_font(family, bold, italic)
+        if path is None:
+            if fam_key in SERIF_FAMILIES:
+                return FAMILY_VERTICAL_METRICS["cambria"]
+            if fam_key in MONO_FAMILIES:
+                return FAMILY_VERTICAL_METRICS["consolas"]
+            return FAMILY_VERTICAL_METRICS["calibri"]
+        return float(fobj.ascender), abs(float(fobj.descender))
+
     def get_metrics(
         self,
         family: Optional[str] = "Calibri",
@@ -234,9 +275,9 @@ class FontManager:
         In MS Word, ' single' line spacing (240/240) uses the font's winAscent + winDescent + externalLeading,
         which for Calibri 11pt is ~1.15 * size_pt (~12.65pt) and for Times New Roman is ~1.15 * size_pt.
         """
-        fobj, _, _ = self.get_font(family, bold, italic)
-        asc = max(0.75, float(fobj.ascender)) * size_pt
-        desc = max(0.20, abs(float(fobj.descender))) * size_pt
+        asc_ratio, desc_ratio = self._vertical_ratios(family, bold, italic)
+        asc = max(0.75, asc_ratio) * size_pt
+        desc = max(0.20, desc_ratio) * size_pt
         # Word single line height (1.0 line = 240 twips-of-line) is typically ~1.15-1.20x point size
         single_line_pt = max(asc + desc, size_pt * 1.15)
         return asc, desc, single_line_pt
