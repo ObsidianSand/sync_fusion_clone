@@ -1841,7 +1841,15 @@ class LayoutEngine:
                 cut = ibox.height_pt
             else:
                 fitting = [b for b in ibox.breaks if 0.0 < b <= budget]
-                cut = fitting[-1] if fitting else 0.0
+                if fitting:
+                    cut = fitting[-1]
+                elif budget > 0.0:
+                    # No natural break fits, but we have space — cut at the budget boundary
+                    # so the row doesn't get stranded as unsplittable on a non-empty page.
+                    cut = budget
+                    remaining = True
+                else:
+                    cut = 0.0
                 remaining = True
             progressed = progressed or cut > 0.0
             top, rest = _split_box(ibox, cut)
