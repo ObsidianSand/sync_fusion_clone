@@ -70,8 +70,10 @@ def _body_bbox(pg, child: str):
     return next(b for b in pg.bboxes if b.xml_path.endswith(":/w:body/" + child))
 
 
-def test_paragraph_gap_is_the_larger_spacing_not_the_sum(tmp_path):
-    doc = _new_doc(14)
+@pytest.mark.parametrize("compat_mode", [14, 15])
+def test_paragraph_gap_is_the_larger_spacing_not_the_sum(tmp_path, compat_mode):
+    """Measured in Word in both modes: 30pt after + 30pt before -> one line + 30pt, not + 60pt."""
+    doc = _new_doc(compat_mode)
     doc.add_paragraph("ref1")
     doc.add_paragraph("ref2")
     a = doc.add_paragraph("upper")

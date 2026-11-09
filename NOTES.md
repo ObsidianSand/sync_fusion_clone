@@ -199,19 +199,18 @@ ours was 268 pt. Four causes:
 * **Space-after + space-before were summed.** Word uses the larger of the two. Settled with a
   purpose-built test file opened in Word: a 30 pt-after / 30 pt-before pair came out exactly one
   line + 30 pt apart (43.3 pt measured), not one line + 60 pt; the same after an empty paragraph.
+  Identical in a copy of the file set to `compatibilityMode` 15, so the rule does not branch on
+  mode (the 88-page mode-15 sample cannot tell sum from max on its own).
 
 Result: the report lays out 11 pages, and all 10 of Word's page-start markers are our page starts
 (they are current here — their count agrees with `<Pages>`); was 1/10. The 88-page sample is
 unchanged at 88 pages, 118/118 anchors, 80/82 markers — it is insensitive to all four changes.
 
-Covered by `tests/test_word_spacing.py` (6 tests). Verified non-vacuous: reverting each of the four
+Covered by `tests/test_word_spacing.py` (7 tests; the spacing test runs in modes 14 and 15). Verified non-vacuous: reverting each of the four
 changes fails its own test, and three of them also fail the report regression test.
 
 ### Known limitations
 
-* **The max-spacing rule was measured in Word 2010 mode only.** The test file was mode 14; the
-  88-page mode-15 sample cannot tell sum from max. If a mode-15 document disagrees, re-run the same
-  test file saved in mode 15 before branching on `compat_mode`.
 * **Unverified edge cases of the max rule:** `w:beforeAutospacing` / `afterAutospacing` (HTML
   spacing) and spacing around tables inside cells were not measured.
 
