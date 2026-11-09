@@ -1,7 +1,10 @@
 """Cross-platform Font Resolver and Metric Calculator using PyMuPDF (fitz)."""
 
 from __future__ import annotations
+import gzip
+import json
 import os
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import pymupdf as fitz
@@ -71,24 +74,44 @@ FONT_CANDIDATES: Dict[str, Dict[Tuple[bool, bool], List[str]]] = {
     },
 }
 
-#: Vertical metrics (ascender, descender as positive fractions of the em) of the Microsoft fonts,
-#: as PyMuPDF reports them from the Windows font files. Line heights -- and so pagination -- come
-#: from these, not from whatever file `get_font` finds, so layout does not depend on the fonts
-#: installed. Without this, a Linux container with no Microsoft fonts fell back to the built-in
-#: Helvetica/Times and paginated the 88-page sample at 91 pages, 7/118 anchors (118/118 with).
-#: Recorded on Windows 11, identical across each family's regular/bold/italic files; regenerate
-#: with `{fam: (f.ascender, -f.descender) for fam in FONT_CANDIDATES}` on a machine that has them.
+#: Metrics of the Microsoft fonts, recorded from the Windows files by `tools_record_font_metrics.py`:
+#: per family and style, the ascender/descender and the advance width of every character in the
+#: common Unicode blocks. Layout uses these, not whatever file `get_font` finds, so line breaks and
+#: page breaks are the same on every machine. Without them a Linux container with no Microsoft
+#: fonts measured text in the built-in Helvetica/Times: the 88-page sample paginated at 91 pages,
+#: 7/118 anchors. Only measurements are stored, no font data (~40 KB).
+METRICS_FILE = Path(__file__).parent / "data" / "font_metrics.json.gz"
+
+_StyleKey = Tuple[str, bool, bool]
+
+
+@lru_cache(maxsize=1)
+def _recorded() -> Tuple[Dict[_StyleKey, Tuple[float, float]], Dict[_StyleKey, Dict[int, float]]]:
+    """({(family, bold, italic): (ascender, descender)}, {(family, bold, italic): {codepoint: em}})."""
+    if not METRICS_FILE.exists():
+        return {}, {}
+    data = json.loads(gzip.decompress(METRICS_FILE.read_bytes()))
+    units = float(data["units_per_em"])
+    tables = []
+    for runs in data["width_tables"]:
+        t: Dict[int, float] = {}
+        for first, widths in runs:
+            for k, w in enumerate(widths):
+                t[first + k] = w / units
+        tables.append(t)
+    vertical: Dict[_StyleKey, Tuple[float, float]] = {}
+    widths_by_style: Dict[_StyleKey, Dict[int, float]] = {}
+    for fam, styles in data["families"].items():
+        for sk, rec in styles.items():
+            key = (fam, sk[0] == "1", sk[1] == "1")
+            vertical[key] = (rec["ascender"], rec["descender"])
+            widths_by_style[key] = tables[rec["widths"]]
+    return vertical, widths_by_style
+
+
+#: {family: (ascender, descender)} of each recorded family's regular style, for reference.
 FAMILY_VERTICAL_METRICS: Dict[str, Tuple[float, float]] = {
-    "calibri": (0.75, 0.25),
-    "calibri light": (0.75, 0.25),
-    "cambria": (0.9501953125, 0.22216796875),
-    "arial": (0.9052734375, 0.2119140625),
-    "times new roman": (0.89111328125, 0.21630859375),
-    "courier new": (0.83251953125, 0.30029296875),
-    "consolas": (0.74267578125, 0.25732421875),
-    "segoe ui": (1.0791015625, 0.2509765625),
-    "verdana": (1.00537109375, 0.2099609375),
-    "georgia": (0.9169921875, 0.21923828125),
+    fam: v for (fam, b, i), v in _recorded()[0].items() if not b and not i
 }
 
 SERIF_FAMILIES = {"cambria", "times new roman", "times", "georgia", "garamond", "palatino", "book antiqua", "caladea"}
@@ -229,38 +252,78 @@ class FontManager:
         italic: bool = False,
         char_spacing_pt: float = 0.0,
     ) -> float:
-        """Measure exact horizontal advance width in points for a string."""
+        """Measure exact horizontal advance width in points for a string.
+
+        A recorded family is measured with its recorded widths (see `_recorded_style`), so the
+        result is the same whether or not the font is installed. A character outside the recorded
+        blocks is measured with the font actually found -- which is also what draws it.
+        """
         if not text:
             return 0.0
         fobj, _, _ = self.get_font(family, bold, italic)
+        rec = self._recorded_style(family, bold, italic)
         try:
-            width = fobj.text_length(text, fontsize=size_pt)
+            if rec is None:
+                width = fobj.text_length(text, fontsize=size_pt)
+            else:
+                table = _recorded()[1][rec]
+                em = 0.0
+                for ch in text:
+                    w = table.get(ord(ch))
+                    em += w if w is not None else fobj.glyph_advance(ord(ch))
+                width = em * size_pt
         except Exception:
             width = len(text) * size_pt * 0.52
         if char_spacing_pt and len(text) > 0:
             width += char_spacing_pt * len(text)
         return width
 
-    def _vertical_ratios(self, family: Optional[str], bold: bool, italic: bool) -> Tuple[float, float]:
-        """(ascender, descender) as fractions of the em, both positive.
+    def _recorded_style(self, family: Optional[str], bold: bool, italic: bool) -> Optional[_StyleKey]:
+        """The recorded family/style whose metrics apply, or None to read the font file found.
 
-        Families in FAMILY_VERTICAL_METRICS use the recorded values whatever file was found, so a
-        machine without the Microsoft fonts paginates like one with them. Any other family is read
-        from its own file when it has one. When it has none, Word would fall back the way
-        `get_font` does -- to Calibri, Cambria or Consolas by category -- so the fallback family's
-        recorded values apply, not those of the built-in face drawn in its place.
+        A recorded family always uses its own record, so a machine without the Microsoft fonts lays
+        out like one with them. Any other family uses its own file when it has one. When it has
+        none, Word would fall back the way `get_font` does -- to Calibri, Cambria or Consolas by
+        category -- so that family's record applies, not the built-in face drawn in its place.
         """
         fam_key = (family or "Calibri").strip().lower()
-        if fam_key in FAMILY_VERTICAL_METRICS:
-            return FAMILY_VERTICAL_METRICS[fam_key]
-        fobj, path, _ = self.get_font(family, bold, italic)
-        if path is None:
-            if fam_key in SERIF_FAMILIES:
-                return FAMILY_VERTICAL_METRICS["cambria"]
-            if fam_key in MONO_FAMILIES:
-                return FAMILY_VERTICAL_METRICS["consolas"]
-            return FAMILY_VERTICAL_METRICS["calibri"]
+        recorded = _recorded()[0]
+        key = (fam_key, bool(bold), bool(italic))
+        if key in recorded:
+            return key
+        _, path, _ = self.get_font(family, bold, italic)
+        if path is not None:
+            return None
+        fallback = "cambria" if fam_key in SERIF_FAMILIES else "consolas" if fam_key in MONO_FAMILIES else "calibri"
+        key = (fallback, bool(bold), bool(italic))
+        return key if key in recorded else None
+
+    def _vertical_ratios(self, family: Optional[str], bold: bool, italic: bool) -> Tuple[float, float]:
+        """(ascender, descender) as fractions of the em, both positive."""
+        rec = self._recorded_style(family, bold, italic)
+        if rec is not None:
+            return _recorded()[0][rec]
+        fobj, _, _ = self.get_font(family, bold, italic)
         return float(fobj.ascender), abs(float(fobj.descender))
+
+    def draw_scale(
+        self, text: str, family: Optional[str], size_pt: float, bold: bool = False, italic: bool = False
+    ) -> float:
+        """Horizontal scale that makes `text`, drawn in the font actually found, exactly as wide as
+        layout measured it. 1.0 when the real font is installed; otherwise the substitute is
+        squeezed or stretched to the recorded widths, so a word can never spill out of the space
+        it was given."""
+        if not text:
+            return 1.0
+        fobj, _, _ = self.get_font(family, bold, italic)
+        try:
+            drawn = fobj.text_length(text, fontsize=size_pt)
+        except Exception:
+            return 1.0
+        if drawn <= 0.0:
+            return 1.0
+        scale = self.measure_text(text, family, size_pt, bold, italic) / drawn
+        return 1.0 if abs(scale - 1.0) < 1e-9 else scale
 
     def get_metrics(
         self,

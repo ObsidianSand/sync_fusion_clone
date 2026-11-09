@@ -313,12 +313,18 @@ class CanvasRenderer:
         txt_rgb = hex_to_rgb_norm(tcmd.color) or (0.0, 0.0, 0.0)
 
         if tcmd.text.strip():
+            origin = fitz.Point(tcmd.x, tcmd.y_baseline)
+            # Layout measured this word with the recorded widths of its font. If that font is not
+            # installed, a substitute draws it; fit the substitute to the same width so the word
+            # ends exactly where layout put its end and never runs into the next one.
+            scale = self.fm.draw_scale(tcmd.text, tcmd.font_family, tcmd.font_size_pt, tcmd.bold, tcmd.italic)
             page.insert_text(
-                fitz.Point(tcmd.x, tcmd.y_baseline),
+                origin,
                 tcmd.text,
                 fontsize=tcmd.font_size_pt,
                 fontname=font_alias,
                 color=txt_rgb,
+                morph=(origin, fitz.Matrix(scale, 0, 0, 1, 0, 0)) if scale != 1.0 else None,
             )
 
         # 3. Underline & Strikethrough decorations

@@ -214,42 +214,64 @@ changes fails its own test, and three of them also fail the report regression te
 * **Unverified edge cases of the max rule:** `w:beforeAutospacing` / `afterAutospacing` (HTML
   spacing) and spacing around tables inside cells were not measured.
 
-## Done — pagination no longer depends on the installed fonts
+## Done — layout no longer depends on the installed fonts
 
 Reported symptom: in the MCP environment, the figure report's page 2 still pushed the Figure 3
 heading and header row to page 3 after the spacing fixes above. Cause: that environment has no
-Microsoft fonts. Line heights came from whichever font file `get_font` found, so there the
-built-in Helvetica/Times stood in for Calibri/Cambria with different ascent/descent. Simulated by
-indexing no font files: the 88-page sample went to 91 pages, **7/118** anchors, and the report lost
-its page 2 layout. Every document rendered there was affected, not only this one.
+Microsoft fonts. Text was measured with whichever font file `get_font` found, so there the built-in
+Helvetica/Times stood in for Calibri/Cambria with different line heights and character widths.
+Simulated by indexing no font files: the 88-page sample went to 91 pages, **7/118** anchors, and the
+report lost its page 2 layout. Every document rendered there was affected, not only this one.
 
-`FAMILY_VERTICAL_METRICS` in `fonts.py` records the ascent/descent ratios of the Microsoft
-families, as PyMuPDF reads them from the Windows files (the same numbers the layout was calibrated
-against), and `get_metrics` uses them whatever file is found. A family outside the table with no
-file uses its category fallback's values (Calibri / Cambria / Consolas), as Word would. With no
-fonts at all: sample 88 pages, 118/118; report 11 pages, page 2 correct. Nothing changes on a
-machine that has the fonts.
+**Fix: measure with recorded metrics, draw fitted to them.** `tools_record_font_metrics.py` records,
+from the Microsoft font files on Windows, each family/style's ascender and descender and the
+advance width of every character in the common Unicode blocks (Latin, Greek, Cyrillic, punctuation,
+currency, arrows, math, symbols...) into `docx_renderer/data/font_metrics.json.gz` — 38 KB, no font
+data. `FontManager` measures a recorded family with those numbers whatever file it finds; a family
+outside the table with no file uses its category fallback's record (Calibri / Cambria / Consolas),
+as Word would. Widths are whole 1/2048-em units in these fonts, so the table reproduces PyMuPDF's
+`text_length` exactly and nothing moved on a machine that has the fonts. When the real font is
+missing, `CanvasRenderer` draws each word in the substitute scaled horizontally to its recorded
+width (`FontManager.draw_scale`) — what PDF viewers do with a missing font — so a word ends exactly
+where layout put its end. Unfitted, Helvetica overran by up to 10.6 pt on the sample's first pages.
+
+Result with **no fonts at all**: every word on every page of all four documents in the repo
+(sample, figure report, TOC example, 2025 integrated guide — 87,000 words) has the same position
+and width as with the fonts; sample 88 pages, 118/118; report 11 pages, page 2 correct; no word
+drawn wider than its slot.
 
 A workaround tried first (`02d0e87`, reverted) cut a table row at the exact space left when no
 line boundary fit. Text and images are assigned whole to one side of a cut, so with the real
 fonts it drew Figure 3's charts off the bottom of page 2 and left an empty box on page 3 (14 images
 past the bottom, 5/10 page starts).
 
-Covered by `tests/test_font_independence.py`: metrics equal with and without fonts for every
-family and style; both documents paginate like Word with no fonts; and nothing in the body —
-bboxes *or drawn images*, since a split row clips its bboxes but not the image it draws — ends below
-the bottom margin, with and without fonts. Verified non-vacuous: undoing the metrics table fails
-42 of them; re-applying `02d0e87` fails the overflow test on the report.
+Covered by `tests/test_font_independence.py`: metrics and widths equal with and without fonts for
+every family and style; every word identical with and without fonts on three documents; both
+documents paginate like Word with no fonts; no word drawn wider than layout gave it; nothing in the
+body — bboxes *or drawn images*, since a split row clips its bboxes but not the image it draws —
+below the bottom margin; and the data file equal byte-for-byte to a fresh recording (skipped where
+the Microsoft fonts are absent). Verified non-vacuous: disabling the width table fails 43, disabling
+the fitting fails both drawing tests, a one-unit edit to the data file fails the freshness test,
+re-applying `02d0e87` fails the overflow test.
+
+`pyproject.toml` now names the package and its data explicitly: automatic discovery had been
+failing on the repo's other top-level folders, so `pip install` / `pip wheel` did not work at all,
+and the data file must ship for any of this to hold.
 
 ### Known limitations
 
-* **Widths still come from the file found.** Without Calibri, text is measured in Helvetica, which
-  is wider, so a long line can wrap differently and shift a page. Neither sample hits this.
-  Bundling Carlito (Calibri's exact widths, SIL OFL) would close it; Caladea is close to Cambria
-  but not exact (~5% narrower on a sample line). Not bundled, to keep the package lean.
-* **Built-in fonts lack some characters**: an em dash draws as "·". Cosmetic; layout unaffected.
-* **Families outside the table** (e.g. Tahoma) still take their file's metrics when present, and
-  so can paginate differently between machines that do and do not have them.
+* **Without the real font, text looks condensed or stretched** — Helvetica/Times fitted to
+  Calibri/Cambria widths. Positions are exact; letterforms are not.
+* **Built-in fonts lack some characters**: an em dash draws as "·" (narrower than its slot, so it
+  leaves a gap rather than spilling). Layout unaffected.
+* **Characters outside the recorded blocks** (e.g. CJK) are measured with the font found, for layout
+  and drawing alike: they cannot spill, but can wrap differently between machines.
+* **Families outside the table** (e.g. Tahoma) use their own file when present, so they can paginate
+  differently between machines that do and do not have them. Add them to `FONT_CANDIDATES` and
+  re-run the recorder to cover them.
+* **Character spacing (`w:spacing` in rPr) is measured but never drawn**, with or without fonts —
+  e.g. the report's Title style adds 0.25 pt per letter, so "Comparison" is drawn 2.5 pt short of
+  its slot. Pre-existing; unrelated to fonts.
 
 ## Related
 

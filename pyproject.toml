@@ -16,3 +16,10 @@ dependencies = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.setuptools]
+packages = ["docx_renderer"]
+
+[tool.setuptools.package-data]
+# Recorded font metrics: layout depends on them, so they must ship with the package.
+docx_renderer = ["data/*.json.gz"]
