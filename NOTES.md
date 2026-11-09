@@ -173,6 +173,48 @@ that it has already moved on (`fresh`), and a test runs that case under a timeou
   (`standard_safety_tables_and_figures_integrated_guide_2025.docx`) does this repeatedly, e.g. page
   105, but carries no Word layout record to check against; saving it from Word would provide one.
 
+## Done — figure report page 2 missing the next figure's heading
+
+Reported symptom: page 2 of `Figure_Comparison_Report_Redacted (1).docx` lacked the Figure 3
+heading and "Original / Code-Regenerated" header row that Word shows at its bottom; we pushed them
+to page 3. We also rendered 12 pages (the last blank) against Word's 11. Nothing was dropped — each
+heading + table block laid out ~20 pt taller than Word's, so two blocks plus the next heading no
+longer fit on a 612 pt landscape page.
+
+Measured against a screenshot of Word's page 2 (`1.665 px/pt`), Word's block pitch is 248 pt and
+ours was 268 pt. Four causes:
+
+* **Closing page break, Word 2010 mode.** The report is `compatibilityMode` 14. In mode ≤ 14 the
+  paragraph mark after a page break that ends its paragraph stays on the old page; Word's page 2
+  opens with the heading at the top margin. Mode 15 (the 88-page sample) moves the mark to the new
+  page as an empty line, which is what `word_truth.py` describes — both are right, for their mode.
+  The parser now reads `compat_mode` (absent → 12).
+* **Line height from the paragraph mark.** Every line was at least as tall as the paragraph
+  style's font. Word sizes a line by its content: the Heading 2 style is 13 pt, its text 10 pt, and
+  Word's heading line is 13.85 pt (10 pt Calibri × 1.15), not ~17. Same for table cells (12.0 pt
+  header row, image rows exactly the image height). The mark's font now sizes only lines with no
+  content.
+* **6 pt below every table.** A hardcoded `prev_space_after_pt = 6.0` with no Word counterpart.
+  Removed.
+* **Space-after + space-before were summed.** Word uses the larger of the two. Settled with a
+  purpose-built test file opened in Word: a 30 pt-after / 30 pt-before pair came out exactly one
+  line + 30 pt apart (43.3 pt measured), not one line + 60 pt; the same after an empty paragraph.
+
+Result: the report lays out 11 pages, and all 10 of Word's page-start markers are our page starts
+(they are current here — their count agrees with `<Pages>`); was 1/10. The 88-page sample is
+unchanged at 88 pages, 118/118 anchors, 80/82 markers — it is insensitive to all four changes.
+
+Covered by `tests/test_word_spacing.py` (6 tests). Verified non-vacuous: reverting each of the four
+changes fails its own test, and three of them also fail the report regression test.
+
+### Known limitations
+
+* **The max-spacing rule was measured in Word 2010 mode only.** The test file was mode 14; the
+  88-page mode-15 sample cannot tell sum from max. If a mode-15 document disagrees, re-run the same
+  test file saved in mode 15 before branching on `compat_mode`.
+* **Unverified edge cases of the max rule:** `w:beforeAutospacing` / `afterAutospacing` (HTML
+  spacing) and spacing around tables inside cells were not measured.
+
 ## Related
 
 `CanvasRenderer.render_to_png_files` numbers output by `page.page_number`. If pagination changes,

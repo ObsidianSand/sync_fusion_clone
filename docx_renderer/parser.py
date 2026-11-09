@@ -168,6 +168,7 @@ class DocxParser:
         self.num_counters: Dict[Tuple[int, int], int] = {}
         self.default_tab_stop_pt: float = 36.0
         self.even_and_odd_headers: bool = False
+        self.compat_mode: int = 15
 
     def close(self) -> None:
         self.zf.close()
@@ -313,6 +314,14 @@ class DocxParser:
         eao = root.find("w:evenAndOddHeaders", NS)
         if eao is not None:
             self.even_and_odd_headers = parse_bool_attr(eao)
+        # A settings part with no compatibilityMode is a Word 2007-era document.
+        self.compat_mode = 12
+        for cs in root.iterfind("w:compat/w:compatSetting", NS):
+            if cs.get(qn("w:name")) == "compatibilityMode":
+                try:
+                    self.compat_mode = int(cs.get(qn("w:val"), "12"))
+                except ValueError:
+                    pass
 
     # -------------------------------------------------------------------------
     # 3. Properties Parsing Helpers (rPr, pPr, Borders)
@@ -845,6 +854,7 @@ class DocxParser:
             final_sect_pr=final_sect,
             default_tab_stop_pt=self.default_tab_stop_pt,
             even_and_odd_headers=self.even_and_odd_headers,
+            compat_mode=self.compat_mode,
         )
 
     def _parse_sect_pr(self, sect_el: etree._Element, doc_rels: Dict[str, str]) -> SectionProps:

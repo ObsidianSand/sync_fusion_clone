@@ -319,6 +319,10 @@ class ParsedDocument:
     final_sect_pr: SectionProps = field(default_factory=SectionProps)
     default_tab_stop_pt: float = 36.0       # Word default = 720 twips = 36 pt (0.5 in)
     even_and_odd_headers: bool = False
+    #: <w:compatSetting w:name="compatibilityMode">: 15 = Word 2013 and later, 14 = Word 2010,
+    #: 12 = Word 2007 (also what Word assumes when the setting is absent). Word lays some
+    #: constructs out differently by mode, so the layout engine branches on it.
+    compat_mode: int = 15
 
 
 # ============================================================================

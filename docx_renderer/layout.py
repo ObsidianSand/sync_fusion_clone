@@ -520,7 +520,10 @@ class LayoutEngine:
         ):
             gap_above = 0.0
         else:
-            gap_above = self.prev_space_after_pt + space_before
+            # Word does not add one paragraph's space-after to the next one's space-before: the
+            # larger of the two separates them. Measured in Word on a 30pt-after / 30pt-before
+            # pair, which comes out 30pt apart, not 60pt.
+            gap_above = max(self.prev_space_after_pt, space_before)
 
         col_x = self.col_x
         col_w = self.col_w
@@ -707,7 +710,7 @@ class LayoutEngine:
                 elif ps.contextual_spacing and prev_ctx and blk.style_id and blk.style_id == prev_style:
                     gap = 0.0
                 else:
-                    gap = prev_after + space_before
+                    gap = max(prev_after, space_before)  # see _layout_paragraph_on_page
 
                 curr_y += gap
                 p_y0 = curr_y
@@ -1025,9 +1028,12 @@ class LayoutEngine:
             curr_seg_leader = "none"
             curr_seg_prev_end_x = rel_start
 
-            max_asc = asc_def
-            max_desc = desc_def
-            max_lh1 = lh1_def
+            # A line is as tall as what is on it. The paragraph mark's font (the paragraph style's
+            # run properties) only sizes a line that carries nothing else -- an empty paragraph,
+            # or the last line of one whose content all sat on earlier lines.
+            max_asc = 0.0
+            max_desc = 0.0
+            max_lh1 = 0.0
             explicit_pb_before = False
             explicit_pb_after = False
             explicit_cb_before = False
@@ -1077,6 +1083,13 @@ class LayoutEngine:
                 atom = atoms[idx]
                 if atom.kind == "page_break":
                     idx += 1
+                    if idx >= n_atoms and self.doc.compat_mode < 15:
+                        # Word 2010 and earlier keep the paragraph mark that follows a closing
+                        # page break on the break's own line, so the paragraph ends on this page
+                        # and the next one opens with whatever comes after it. Word 2013+ moves
+                        # the mark to the top of the new page as an empty line.
+                        explicit_pb_after = True
+                        break
                     if not curr_seg_atoms and not segments:
                         explicit_pb_before = True
                     else:
@@ -1144,6 +1157,8 @@ class LayoutEngine:
             if curr_seg_atoms or not segments:
                 flush_segment()
 
+            if max_lh1 <= 0.0:
+                max_asc, max_desc, max_lh1 = asc_def, desc_def, lh1_def
             lh = self._compute_line_height(ps, max_lh1, max_asc + max_desc)
             lines.append(
                 {
@@ -1957,7 +1972,8 @@ class LayoutEngine:
                     style_id=tb.style_id,
                 )
             )
-        self.prev_space_after_pt = 6.0
+        # Word adds no space below a table: the next paragraph's own space-before is all there is.
+        self.prev_space_after_pt = 0.0
         self.prev_style_id = None
         self.prev_contextual_spacing = False
 
