@@ -554,6 +554,11 @@ class LayoutEngine:
                     for nr in next_blk.runs:
                         if nr.kind == "drawing" and nr.drawing is not None and not nr.drawing.is_floating:
                             next_min_h = max(next_min_h, nr.drawing.height_pt + 12.0)
+                elif isinstance(next_blk, TableBlock):
+                    # Keep with next means keep with the table's first row -- as much of it as
+                    # has to go together. Measured, not guessed: the old flat 24 pt pushed a
+                    # heading off the page when the header row under it was only ~12 pt.
+                    next_min_h = self._table_first_part_height(next_blk)
                 need_h += next_min_h
             if (ps.keep_lines or ps.keep_next) and (self.cursor_y + need_h > self.page_bottom_limit):
                 self._advance_flow()
@@ -1813,6 +1818,33 @@ class LayoutEngine:
                     summary=f"r{r_idx + 1}c{entry['g_col'] + 1}",
                 )
             )
+
+    def _table_first_part_height(self, tb: TableBlock) -> float:
+        """Least height of `tb` that must fit under a keep-with-next paragraph above it.
+
+        That is the table's first row: whole if it cannot split (header rows, cantSplit, exact
+        height, vertical merges), otherwise down to the first line boundary of each cell.
+        """
+        assert self.curr_page is not None
+        col_widths = self._resolve_table_column_widths(tb, self.col_w)
+        if not col_widths:
+            return 0.0
+        row_recs = self._prepare_laid_out_rows(
+            tb, col_widths, page_num=self.curr_page.page_number, total_pages=max(1, len(self.pages))
+        )
+        if not row_recs:
+            return 0.0
+        rr = row_recs[0]
+        row: TableRow = rr["row"]
+        if (row.cant_split or row.is_header or (row.height_rule == "exact" and row.height_pt > 0)
+                or any(e["cell"].v_merge is not None for e in rr["cells"])):
+            return rr["height"]
+        least = 0.0
+        for e in rr["cells"]:
+            ibox: _LaidOutBox = e["inner_box"]
+            first_break = min((b for b in ibox.breaks if b > 0.0), default=ibox.height_pt)
+            least = max(least, min(first_break, ibox.height_pt) + e["pad_t"] + e["pad_b"])
+        return min(least, rr["height"])
 
     def _split_row(self, rr: dict, avail: float) -> Optional[Tuple[dict, dict]]:
         """Split row record `rr` into a first part at most `avail` tall and the remainder.

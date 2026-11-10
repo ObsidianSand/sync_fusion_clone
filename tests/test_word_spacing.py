@@ -155,3 +155,38 @@ def test_figure_report_paginates_like_word():
     assert page3_rows and all("/w:tr[2]/" in p for p in page3_rows), "page 3 should open with the image row"
     page3_top = min(pages[2].bboxes, key=lambda b: b.y0)
     assert page3_top.xml_path.split(":", 1)[1].startswith("/w:body/w:tbl[3]")
+
+
+def _heading_before_table_doc(path: Path, spacer_after_pt: float) -> Path:
+    """A spacer, then a keep-with-next heading, then a table whose first row is a header row."""
+    doc = _new_doc()
+    doc.add_paragraph("spacer").paragraph_format.space_after = Pt(spacer_after_pt)
+    heading = doc.add_paragraph("Figure 3 heading")
+    heading.paragraph_format.keep_with_next = True
+    table = doc.add_table(rows=2, cols=1)
+    table.cell(0, 0).text = "header"
+    table.cell(1, 0).text = "body"
+    tr_pr = table.rows[0]._tr.get_or_add_trPr()
+    tr_pr.append(OxmlElement("w:tblHeader"))
+    doc.save(path)
+    return path
+
+
+@pytest.mark.parametrize("slack_pt,stays", [(6.0, True), (-3.0, False)])
+def test_keep_with_next_before_a_table_measures_the_first_row(tmp_path, slack_pt, stays):
+    """A keep-with-next heading stays on the page when the table's first row fits under it.
+
+    The room needed used to be a flat 24 pt: the figure report's header row is ~12 pt, so a
+    heading ending 12-24 pt above the margin was pushed to the next page, where Word keeps it.
+    """
+    probe = _layout(_heading_before_table_doc(tmp_path / "probe.docx", 0.0))[0]
+    heading_y1 = _body_bbox(probe, "w:p[2]").y1
+    row_h = max(b.y1 for b in probe.bboxes if "/w:tbl[1]/w:tr[1]/" in b.xml_path) - heading_y1
+    assert row_h < 24.0
+    limit = probe.height_pt - probe.margin_bottom_pt
+    spacer = limit - row_h - slack_pt - heading_y1
+    pages = _layout(_heading_before_table_doc(tmp_path / "doc.docx", spacer))
+    on_page_1 = any(b.xml_path.endswith(":/w:body/w:p[2]") for b in pages[0].bboxes)
+    assert on_page_1 is stays
+    if stays:
+        assert any("/w:tbl[1]/w:tr[1]/" in b.xml_path for b in pages[0].bboxes)
